@@ -25,7 +25,7 @@ sh target/appassembler/bin/IndexCollection -threads 1 -collection JsonCollection
 Then execute:
 
 ```bash
-target/appassembler/bin/SearchCollection -hits 1000 -parallelism 6\
+target/appassembler/bin/SearchCollection -parallelism 6\
   -index indexes/msmarco-passage/lucene-index-msmarco/ \
   -topics src/main/resources/topics-and-qrels/topics.msmarco-passage.dev-subset.txt \
   -topicreader TsvInt \
