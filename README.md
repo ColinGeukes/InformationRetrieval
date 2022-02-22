@@ -60,6 +60,7 @@ python tools/scripts/msmarco/msmarco_passage_eval.py \
 Download: https://msmarco.blob.core.windows.net/msmarcoranking/msmarco-test2019-queries.tsv.gz
 
 Run: 
+
 ```bash
 target/appassembler/bin/SearchCollection -parallelism 6\
   -index indexes/msmarco-passage/lucene-index-msmarco/ \
@@ -70,11 +71,26 @@ target/appassembler/bin/SearchCollection -parallelism 6\
 ```
 
 Evaluating:
+
 Download: https://trec.nist.gov/data/deep/2019qrels-pass.txt 
+
 Run: 
+
 ```bash
 tools/eval/trec_eval.9.0.4/trec_eval -c -m map -c -m recall.1000 ./2019qrels-pass.txt runs/run.marco-test2019-queries.tsv
 ```
+
+## RankLib (Learning to Rank)
+Download 
+
+RankLib: https://sourceforge.net/projects/lemur/files/lemur/
+Qrels Dev: https://msmarco.blob.core.windows.net/msmarcoranking/qrels.dev.tsv
+Qrels Train: https://msmarco.blob.core.windows.net/msmarcoranking/qrels.train.tsv
+
+Training:
+
+java -jar ./RankLib-2.17.jar -train ./qrels.train.tsv -test ./qrels.dev.tsv -validate ./2019qrels-pass.txt -ranker 6 -metric2t NDCG@10 -metric2T ERR@10 -save mymodel.txt
+
 
 
 
