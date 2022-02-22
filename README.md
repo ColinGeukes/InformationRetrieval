@@ -65,8 +65,16 @@ target/appassembler/bin/SearchCollection -parallelism 6\
   -index indexes/msmarco-passage/lucene-index-msmarco/ \
   -topics ./msmarco-test2019-queries.tsv \
   -topicreader TsvInt \
-  -output runs/run.msmarco-passage.bm25-baseline.topics.msmarco-passage.dev-subset.txt \
+  -output /runs/run.marco-test2019-queries.tsv \
   -bm25
 ```
+
+Evaluating:
+Download: https://trec.nist.gov/data/deep/2019qrels-pass.txt 
+Run: ```bash
+tools/eval/trec_eval.9.0.4/trec_eval -c -m map -c -m recall.1000 ./2019qrels-pass.txt runs/run.marco-test2019-queries.tsv
+```
+
+
 
 
