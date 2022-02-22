@@ -56,3 +56,17 @@ python tools/scripts/msmarco/msmarco_passage_eval.py \
     src/main/resources/topics-and-qrels/qrels.msmarco-passage.dev-subset.txt runs/run.msmarco-passage.bm25.default.tsv
 ```
 
+### Running 200 test queries
+Download: https://msmarco.blob.core.windows.net/msmarcoranking/msmarco-test2019-queries.tsv.gz
+
+Run: 
+```bash
+target/appassembler/bin/SearchCollection -parallelism 6\
+  -index indexes/msmarco-passage/lucene-index-msmarco/ \
+  -topics ./msmarco-test2019-queries.tsv \
+  -topicreader TsvInt \
+  -output runs/run.msmarco-passage.bm25-baseline.topics.msmarco-passage.dev-subset.txt \
+  -bm25
+```
+
+
