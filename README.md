@@ -65,7 +65,7 @@ target/appassembler/bin/SearchCollection -parallelism 6\
   -index indexes/msmarco-passage/lucene-index-msmarco/ \
   -topics ./msmarco-test2019-queries.tsv \
   -topicreader TsvInt \
-  -output /runs/run.marco-test2019-queries.tsv \
+  -output ./runs/run.marco-test2019-queries.tsv \
   -bm25
 ```
 
