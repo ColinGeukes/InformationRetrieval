@@ -76,6 +76,7 @@ target/appassembler/bin/SearchCollection -parallelism 6\
 tools/eval/trec_eval.9.0.4/trec_eval -c -m map -c -m recall.1000 ./2019qrels-pass.txt runs/run.marco-test2019-queries-default.tsv
 ```
 
+Source for following statements: https://github.com/castorini/anserini/blob/master/docs/experiments-msmarco-passage.md
 ## Tuned for recall@1000
 
 ```bash
