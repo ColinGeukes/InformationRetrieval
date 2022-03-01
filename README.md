@@ -56,29 +56,59 @@ python tools/scripts/msmarco/msmarco_passage_eval.py \
     src/main/resources/topics-and-qrels/qrels.msmarco-passage.dev-subset.txt runs/run.msmarco-passage.bm25.default.tsv
 ```
 
-### Running 200 test queries
+# Running 200 test queries
 Download: https://msmarco.blob.core.windows.net/msmarcoranking/msmarco-test2019-queries.tsv.gz
+Download: https://trec.nist.gov/data/deep/2019qrels-pass.txt 
 
-Run: 
+
+## Default
 
 ```bash
 target/appassembler/bin/SearchCollection -parallelism 6\
   -index indexes/msmarco-passage/lucene-index-msmarco/ \
   -topics ./msmarco-test2019-queries.tsv \
   -topicreader TsvInt \
-  -output ./runs/run.marco-test2019-queries.tsv \
-  -bm25
+  -output ./runs/run.marco-test2019-queries-default.tsv \
+  -bm25 -bm25.k1 0.90 -bm25.b 0.60
 ```
-
-Evaluating:
-
-Download: https://trec.nist.gov/data/deep/2019qrels-pass.txt 
-
-Run: 
 
 ```bash
-tools/eval/trec_eval.9.0.4/trec_eval -c -m map -c -m recall.1000 ./2019qrels-pass.txt runs/run.marco-test2019-queries.tsv
+tools/eval/trec_eval.9.0.4/trec_eval -c -m map -c -m recall.1000 ./2019qrels-pass.txt runs/run.marco-test2019-queries-default.tsv
 ```
+
+## Tuned for recall@1000
+
+```bash
+target/appassembler/bin/SearchCollection -parallelism 6\
+  -index indexes/msmarco-passage/lucene-index-msmarco/ \
+  -topics ./msmarco-test2019-queries.tsv \
+  -topicreader TsvInt \
+  -output ./runs/run.marco-test2019-queries-tuned1.tsv \
+  -bm25 -bm25.k1 0.0.82 -bm25.b 0.68
+```
+
+```bash
+tools/eval/trec_eval.9.0.4/trec_eval -c -m map -c -m recall.1000 ./2019qrels-pass.txt runs/run.marco-test2019-queries-tuned1.tsv
+```
+
+## Tuned MRR@10/MAP
+
+```bash
+target/appassembler/bin/SearchCollection -parallelism 6\
+  -index indexes/msmarco-passage/lucene-index-msmarco/ \
+  -topics ./msmarco-test2019-queries.tsv \
+  -topicreader TsvInt \
+  -output ./runs/run.marco-test2019-queries-tuned2.tsv \
+  -bm25 -bm25.k1 0.0.60 -bm25.b 0.62
+```
+
+```bash
+tools/eval/trec_eval.9.0.4/trec_eval -c -m map -c -m recall.1000 ./2019qrels-pass.txt runs/run.marco-test2019-queries-tuned2.tsv
+```
+
+
+
+Run: 
 
 ## RankLib (Learning to Rank)
 Download 
