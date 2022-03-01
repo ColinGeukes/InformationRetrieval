@@ -85,7 +85,7 @@ target/appassembler/bin/SearchCollection -parallelism 6\
   -topics ./msmarco-test2019-queries.tsv \
   -topicreader TsvInt \
   -output ./runs/run.marco-test2019-queries-tuned1.tsv \
-  -bm25 -bm25.k1 0.0.82 -bm25.b 0.68
+  -bm25 -bm25.k1 0.90 -bm25.b 0.60 -rm3
 ```
 
 ```bash
@@ -100,7 +100,7 @@ target/appassembler/bin/SearchCollection -parallelism 6\
   -topics ./msmarco-test2019-queries.tsv \
   -topicreader TsvInt \
   -output ./runs/run.marco-test2019-queries-tuned2.tsv \
-  -bm25 -bm25.k1 0.0.60 -bm25.b 0.62
+  -bm25 -bm25.k1 0.0.90 -bm25.b 0.40
 ```
 
 ```bash
