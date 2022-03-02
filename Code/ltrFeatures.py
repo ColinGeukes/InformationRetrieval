@@ -111,5 +111,59 @@ def generate_document_features(file, features):
         }
 
 
+def normalize_features_full():
+    file1 = open('features_full.tsv', 'r')
+    rows = file1.readlines()
+
+    # Retrieve the min and max value of a feature
+    features_min_max = {}
+    for row in rows:
+        row_split = row.split(" ")
+
+        for i in range(2, len(row_split)):
+            feature_split = row_split[i].split(":")
+            feature_name = feature_split[0]
+            feature_value = float(feature_split[1].strip())
+
+            # If feature not yet exists
+            if feature_name not in features_min_max:
+                features_min_max[feature_name] = {
+                    "min": min(0., feature_value),
+                    "max": feature_value,
+                }
+
+            # Update min and max
+            else:
+                features_min_max[feature_name]["min"] = min(features_min_max[feature_name]["min"], feature_value)
+                features_min_max[feature_name]["max"] = max(features_min_max[feature_name]["max"], feature_value)
+
+    # Normalize the features
+    normalized_data = []
+    for row in rows:
+        row_split = row.split(" ")
+        feature_space = [0.] * len(features_min_max)
+
+        for i in range(2, len(row_split)):
+            feature_split = row_split[i].split(":")
+            feature_name = int(feature_split[0])
+            feature_value = float(feature_split[1].strip())
+
+            feature_min = features_min_max[str(feature_name)]["min"]
+            feature_max = features_min_max[str(feature_name)]["max"]
+            feature_space[feature_name - 1] = (feature_value - feature_min) / (feature_max - feature_min)
+
+        feature_space_format = []
+        for i in range(0, len(feature_space)):
+            feature_space_format.append(str(i + 1) + ":" + str(feature_space[i]))
+
+        normalized_data.append('%s %s %s' % (row_split[0], row_split[1], " ".join(feature_space_format)))
+
+    # Write the data
+    with open('features_full_norm.tsv', 'w') as f:
+        for row in normalized_data:
+            f.write("%s\n" % row)
+
+
 if __name__ == '__main__':
     generate_collection_features()
+    normalize_features_full()
