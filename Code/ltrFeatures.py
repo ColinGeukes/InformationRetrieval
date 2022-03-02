@@ -33,11 +33,22 @@ def generate_collection_features():
     # Save the features
     data = []
     for document_id in run_features:
+
+        # Retrieve document specific features
+        doc_features = []
+        for doc_feature in document_features[document_id]:
+            doc_features.append("%s:%s" % (doc_feature, document_features[document_id][doc_feature]))
+
         for query_id in run_features[document_id]:
             # The runs are named with their feature (1, 2... n.)
             features = []
             for feature in run_features[document_id][query_id]:
                 features.append("%s:%s" % (feature, run_features[document_id][query_id][feature]))
+
+            # Extend the features with document specific features
+            features.extend(doc_features)
+
+            print(features)
 
             # Append the data
             data.append('%s qid:%s %s' % (document_id, query_id, " ".join(features)))
@@ -76,11 +87,13 @@ def generate_run_features(run_file, run_features, name):
         else:
             run_features[document][query][name] = score
 
-    # TODO: WE need to normalize from 0 to 1.
+    # TODO: WE need to normalize from 0 to 1!
 
 
 def generate_document_features(file, features):
     print("Getting document features: ", file)
+
+    feature_base = len(run_feature_files) + 1
 
     # Open the doc and read line by line the json.
     file1 = open(file, 'r')
@@ -92,7 +105,9 @@ def generate_document_features(file, features):
 
         # Create the features for the document
         features[row["id"]] = {
-            'dl': len(contents.split(" "))
+            # Store the document length
+            feature_base: len(contents.split(" "))
+            # Store the stopword percentage
         }
 
 
