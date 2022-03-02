@@ -154,6 +154,7 @@ sh target/appassembler/bin/IndexCollection -collection JsonCollection \
  -storePositions -storeDocvectors -storeRaw
 ```
 
+
 We then perform our own retrieval with
 ```bash
 target/appassembler/bin/SearchCollection -parallelism 6  -index indexes/msmarco-passage/lucene-index-msmarco-expanded-topk10/   -topics ./msmarco-test2019-queries.tsv   -topicreader TsvInt   -output ./runs/run.marco-test2019-queries-default.tsv   -bm25 -bm25.k1 0.90 -bm25.b 0.60
