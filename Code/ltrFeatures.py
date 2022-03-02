@@ -2,7 +2,7 @@ import csv
 import json
 import os
 
-collection_dir = "/home/colingeukes/Documents/projects/InformationRetrieval/CoreIR/Anserini/collections/msmarco-passage/collection_jsonl"
+collection_dir = "../../Anserini/collections/msmarco-passage/collection_jsonl"
 run_feature_files = [
     "./data/run.marco-test2019-queries-BM25-default.tsv",
     "./data/run.marco-test2019-queries-BM25-default-RM3.tsv",
