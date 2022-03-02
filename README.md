@@ -172,11 +172,9 @@ RankLib: https://sourceforge.net/projects/lemur/files/lemur/
 Qrels Dev: https://msmarco.blob.core.windows.net/msmarcoranking/qrels.dev.tsv
 Qrels Train: https://msmarco.blob.core.windows.net/msmarcoranking/qrels.train.tsv
 
-Training:
-
-java -jar ./RankLib-2.17.jar -train ./qrels.train.tsv -test ./qrels.dev.tsv -validate ./2019qrels-pass.txt -ranker 6 -metric2t NDCG@10 -metric2T ERR@10 -save mymodel.txt
+First run the ltrfeatures.py, followed by:
 
 
-
-
-
+```bash
+java -jar ./RankLib-2.17.jar -train ../InformationRetrieval/Code/features_full_norm_training.tsv -test ../InformationRetrieval/Code/features_full_norm_test.tsv -validate ../InformationRetrieval/Code/features_full_norm_validation.tsv -ranker 6 -metric2t NDCG@10 -metric2T ERR@10 -save mymodel.txt -estop 200
+```
