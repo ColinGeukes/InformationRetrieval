@@ -129,7 +129,7 @@ def retrieveRelevanceDocuments(ids, length):
     return ids
 
 
-def beadPlot(ids, length=50):
+def beadPlot(ids, length=100):
     # Retrieve ids and relevances
     relevant_docs = retrieveRelevanceDocuments(ids, length)
 
@@ -152,7 +152,7 @@ def beadPlot(ids, length=50):
     plt.ylabel("Queries")
 
     # The x ticks are hardcoded..
-    plt.xticks([0, 9, 19, 29, 39, 49], [1, 10, 20, 30, 40, 50])
+    plt.xticks([0, 4, 9, 14, 19, 24, 29, 34, 39, 44, 49], [1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50])
     plt.xlabel("Retrieved rank", loc='center')
 
     ax.set_title("Beadplot relevance documents for queries")
@@ -172,16 +172,102 @@ def beadPlot(ids, length=50):
                                         pad=-1.2)
 
     cbar = fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap), ticks=bounds,
-                        orientation='vertical', cax=colorbar_axes)
+                        orientation='vertical', cax=colorbar_axes, label='relevance')
     cbar.set_ticks([-0.5, 0.5, 1.5, 2.5, 3.5])
-    cbar.ax.set_yticklabels(['not indexed', 'not relevant', 'somewhat relevant', 'maybe relevant', 'relevant'])
+    cbar.ax.set_yticklabels(['?', '0', '1', '2', '3'])
 
     # , cax=fig.add_axes([0.9, 0.06, 0.02, 0.8]))
 
     plt.show()
     fig.savefig("beadplot.pdf", bbox_inches='tight')
 
+
+def generateLearningToRankFormat():
+    # Retrieve the run file.
+    query_rankings_file = csv.reader(open("data/run.marco-test2019-queries.tsv"), delimiter=" ")
+
+    # Store the data into the LETOR format
+    data = []
+    for row in query_rankings_file:
+        # < target > qid: < qid > < feature >: < value > < feature >: < value > ... < feature >: < value >  # <info>
+        data.append('%s qid:%s 1:%s 2:%s' % (row[2], row[0], row[3], row[4]))
+
+    # Write the data
+    with open('training.tsv', 'w') as f:
+        for row in data:
+            f.write("%s\n" % row)
+
+
+def retrieveFeatureFileFormat():
+    # Get the ranked queries for a given
+    query_rankings_file = csv.reader(open("data/run.marco-test2019-queries.tsv"), delimiter=" ")
+
+    data = {}
+
+    for row in query_rankings_file:
+        if row[0] not in data:
+            data[row[0]] = [row[2]]
+        else:
+            data[row[0]].append(row[2])
+
+    # Store the data into the LETOR format
+    formattedData = []
+    formattedData.append('[')
+    index = 0
+    for row in data:
+        # Increment index
+        index += 1
+
+        formattedData.append('{')
+        formattedData.append('\t"qid": "%i",' % int(row))
+
+        # Format the array
+        formattedData.append('\t"docIds": ["%s"]' % '", "'.join(data[row]))
+
+        if index < len(data):
+            formattedData.append('},')
+        else:
+            formattedData.append('}')
+
+    formattedData.append(']')
+
+    with open('featureExtraction.json', 'w') as f:
+        for row in formattedData:
+            f.write("%s\n" % row)
+
+
+def retrieveFeatureFileFormatBadJson():
+    # Get the ranked queries for a given
+    query_rankings_file = csv.reader(open("data/run.marco-test2019-queries.tsv"), delimiter=" ")
+
+    data = {}
+
+    for row in query_rankings_file:
+        if row[0] not in data:
+            data[row[0]] = [row[2]]
+        else:
+            data[row[0]].append(row[2])
+
+    # Store the data into the LETOR format
+    formattedData = []
+    index = 0
+    for row in data:
+        # Increment index
+        index += 1
+
+        if index < len(data):
+            formattedData.append('{"qid": "%i", "docIds": ["%s"]},' % (int(row), '", "'.join(data[row])))
+        else:
+            formattedData.append('{"qid": "%i", "docIds": ["%s"]}' % (int(row), '", "'.join(data[row])))
+
+    with open('featureExtraction.json', 'w') as f:
+        for row in formattedData:
+            f.write("%s\n" % row)
+
+
 if __name__ == '__main__':
+    # retrieveFeatureFileFormatBadJson()
+    # generateLearningToRankFormat()
     # openFile()
     beadPlot({
         '1113437': [],
