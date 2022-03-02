@@ -1,6 +1,7 @@
 import csv
 import json
 import os
+import random
 
 collection_dir = "../../Anserini/collections/msmarco-passage/collection_jsonl"
 run_feature_files = [
@@ -48,7 +49,7 @@ def generate_collection_features():
             # Extend the features with document specific features
             features.extend(doc_features)
 
-            print(features)
+            # print(features)
 
             # Append the data
             data.append('%s qid:%s %s' % (document_id, query_id, " ".join(features)))
@@ -163,7 +164,27 @@ def normalize_features_full():
         for row in normalized_data:
             f.write("%s\n" % row)
 
+def split_files():
+    print("Splitting files into training, test and vallidation")
+    file1 = open('features_full_norm.tsv', 'r')
+    rows = file1.readlines()
+    random.shuffle(rows)
+
+    training = rows[0:int(len(rows) * 0.6)]
+    test = rows[int(len(rows) * 0.6): int(len(rows) * 0.8)]
+    validation = rows[int(len(rows) * 0.8):len(rows)]
+
+    with open('features_full_norm_training.tsv', 'w') as f:
+        for row in training:
+            f.write("%s" % row)
+    with open('features_full_norm_test.tsv', 'w') as f:
+        for row in test:
+            f.write("%s" % row)
+    with open('features_full_norm_validation.tsv', 'w') as f:
+        for row in validation:
+            f.write("%s" % row)
 
 if __name__ == '__main__':
     generate_collection_features()
     normalize_features_full()
+    split_files()
