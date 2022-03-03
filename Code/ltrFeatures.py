@@ -218,7 +218,7 @@ def match_relevance_to_file():
 
         # Check if we have a match
         if doc_id in features_data and query_id in features_data[doc_id]:
-            relevant_matches.append('%s qid:%s %s' % (row[3], query_id, features_data[doc_id][query_id]))
+            relevant_matches.append('%s qid:%s %s # docid=%s' % (row[3], query_id, features_data[doc_id][query_id], doc_id))
 
     # Write the data
     with open('features_full_norm_relevance.tsv', 'w') as f:
@@ -227,7 +227,7 @@ def match_relevance_to_file():
 
 
 if __name__ == '__main__':
-    generate_collection_features()
-    normalize_features_full()
+    # generate_collection_features()
+    # normalize_features_full()
     match_relevance_to_file()
     split_files()
