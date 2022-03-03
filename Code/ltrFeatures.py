@@ -167,7 +167,7 @@ def normalize_features_full():
 
 def split_files():
     print("Splitting files into training, test and vallidation")
-    file1 = open('features_full_norm.tsv', 'r')
+    file1 = open('features_full_norm_relevance.tsv', 'r')
     rows = file1.readlines()
     random.shuffle(rows)
 
@@ -227,7 +227,7 @@ def match_relevance_to_file():
 
 
 if __name__ == '__main__':
-    # generate_collection_features()
-    # normalize_features_full()
+    generate_collection_features()
+    normalize_features_full()
     match_relevance_to_file()
-    # split_files()
+    split_files()
