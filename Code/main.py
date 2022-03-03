@@ -77,22 +77,25 @@ def openFile(docs_per_query=DOCUMENTS_PER_QUERY):
                     # print("Key: " + str(key) + " docId:" + str(docId))
                     dict2[queryId].append(int(rating))
 
-    return dict2
+    NDCGList = []
+    for key in dict2:
+        ratingList = dict2[key]
+        I = ratingList.copy()
+        I.sort(reverse=True)
+        DCG = computeDCG(ratingList, computeCG(ratingList))
+        DCGI = computeDCG(I, computeCG(I))
 
-    # for key in dict2:
-    #     ratingList = dict2[key]
-    #     I = ratingList.copy()
-    #     I.sort(reverse=True)
-    #     DCG = computeDCG(ratingList, computeCG(ratingList))
-    #     DCGI = computeDCG(I, computeCG(I))
-    #
-    #     if DCGI == 0:
-    #         print("ISZERO")
-    #     else:
-    #         NDCG = DCG / DCGI
-    #         print("Key: " + key + " NDCG: " + str(NDCG))
-    #         print(ratingList)
-    #         print(str(I) + "\n")
+        if DCGI == 0:
+            print("ISZERO")
+        else:
+            NDCG = DCG / DCGI
+            NDCGList.append([key, NDCG])
+            print("Key: " + key + " NDCG: " + str(NDCG))
+            print(ratingList)
+            print(str(I) + "\n")
+    NDCGList.sort(key=lambda x: x[1])
+    print(NDCGList)
+    # return dict2
 
 
 def retrieveRelevanceDocuments(ids, length):
@@ -268,8 +271,8 @@ def retrieveFeatureFileFormatBadJson():
 if __name__ == '__main__':
     # retrieveFeatureFileFormatBadJson()
     # generateLearningToRankFormat()
-    # openFile()
-    beadPlot({
-        '1113437': [],
-        '19335': [],
-        '183378': []})
+    openFile()
+    # beadPlot({
+    #     '1113437': [],
+    #     '19335': [],
+    #     '183378': []})
