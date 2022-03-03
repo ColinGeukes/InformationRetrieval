@@ -43,7 +43,7 @@ def openFile(docs_per_query=DOCUMENTS_PER_QUERY):
     lines = []
     with open('data/2019qrels-pass.txt') as f:
         lines = f.readlines()
-
+    print(lines)
     list1 = []
     for line in lines:
         line = line.split()
