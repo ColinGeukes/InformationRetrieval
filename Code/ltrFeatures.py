@@ -2,6 +2,7 @@ import csv
 import json
 import os
 import random
+import re
 import time
 
 collection_dir = "../../Anserini/collections/msmarco-passage/collection_jsonl"
@@ -12,6 +13,17 @@ run_feature_files = [
     "./data/run.marco-test2019-queries-BM25-optimized-AXIOM-Recall.tsv",
     "./data/run.marco-test2019-queries-BM25-optimized-RM3.tsv"
 ]
+stop_words = "./data/stopwords.txt"
+
+
+def retrieve_stop_words(file=stop_words):
+    file1 = open(file, 'r')
+    lines = file1.readlines()
+
+    stop_word_set = set()
+    for line in lines:
+        stop_word_set.add(line.strip())
+    return stop_word_set
 
 
 def generate_collection_features():
@@ -20,10 +32,13 @@ def generate_collection_features():
     onlyfiles.sort()
     print("Getting features of collection: ", onlyfiles)
 
+    # Retrieve stop words
+    stop_word_set = retrieve_stop_words()
+
     # Loop through collection
     document_features = {}
     for document in onlyfiles:
-        generate_document_features(collection_dir + "/" + document, document_features)
+        generate_document_features(collection_dir + "/" + document, document_features, stop_word_set)
 
     print("Get run features:", run_feature_files)
     run_features = {}
@@ -50,8 +65,6 @@ def generate_collection_features():
             # Extend the features with document specific features
             features.extend(doc_features)
 
-            # print(features)
-
             # Append the data
             data.append('%s qid:%s %s' % (document_id, query_id, " ".join(features)))
 
@@ -62,7 +75,7 @@ def generate_collection_features():
 
 
 def generate_run_features(run_file, run_features, name):
-    print("Getting document features: ", run_file)
+    print("Retrieve run features: ", run_file)
     run_data = csv.reader(open(run_file), delimiter=" ")
 
     for row in run_data:
@@ -89,10 +102,8 @@ def generate_run_features(run_file, run_features, name):
         else:
             run_features[document][query][name] = score
 
-    # TODO: WE need to normalize from 0 to 1!
 
-
-def generate_document_features(file, features):
+def generate_document_features(file, features, stop_word_set):
     print("Getting document features: ", file)
 
     feature_base = len(run_feature_files) + 1
@@ -105,12 +116,38 @@ def generate_document_features(file, features):
         row = json.loads(line)
         contents = row["contents"]
 
+        # Get document length (also split on dots and commas
+        # words = re.split('. |, | ', contents)
+        content_without_punctuation = re.sub(r'[^\w\s]', '', contents)
+        words = content_without_punctuation.split(" ")
+
+        # Remove empty strings
+        words = list(filter(lambda word: len(word) > 1, words))
+
+        # Retrieve the doc length
+        doc_length = len(words)
+
+        # Retrieve stop word percentage
+        stop_word_percentage = 0
+        if doc_length > 0:
+            stop_word_percentage = get_stop_word_amount(words, stop_word_set) / doc_length
+
         # Create the features for the document
         features[row["id"]] = {
             # Store the document length
-            feature_base: len(contents.split(" "))
-            # Store the stopword percentage
+            feature_base: doc_length,
+            # Store the stop word percentage
+            feature_base + 1: stop_word_percentage
+
         }
+
+
+def get_stop_word_amount(words, stop_word_set):
+    hits = 0
+    for word in words:
+        if word.lower() in stop_word_set:
+            hits += 1
+    return hits
 
 
 def normalize_features_full():
@@ -219,7 +256,8 @@ def match_relevance_to_file():
 
         # Check if we have a match
         if doc_id in features_data and query_id in features_data[doc_id]:
-            relevant_matches.append('%s qid:%s %s # docid=%s' % (row[3], query_id, features_data[doc_id][query_id], doc_id))
+            relevant_matches.append(
+                '%s qid:%s %s # docid=%s' % (row[3], query_id, features_data[doc_id][query_id], doc_id))
 
     # Write the data
     with open('features_full_norm_relevance.tsv', 'w') as f:
