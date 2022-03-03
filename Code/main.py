@@ -40,7 +40,7 @@ def computeDCG(list, CG):
 
 
 
-def retrieveRelevanceDocuments(ids, length):
+def retrieveRelevanceDocuments(ids, length=50):
     # Retrieve relevances.
     query_relevances_file = csv.reader(open("data/2019qrels-pass.txt"), delimiter=" ")
     query_relevances = {}
@@ -53,7 +53,7 @@ def retrieveRelevanceDocuments(ids, length):
         query_relevances[row[0]][row[2]] = row[3]
 
     # Get the ranked queries for a given
-    query_rankings_file = csv.reader(open("data/run.marco-test2019-queries.tsv"), delimiter=" ")
+    query_rankings_file = csv.reader(open("data/run.marco-test2019-queries-BM25-default.tsv"), delimiter=" ")
 
     for row in query_rankings_file:
         if row[0] in ids and int(row[3]) <= length:
@@ -74,10 +74,43 @@ def retrieveRelevanceDocuments(ids, length):
     return ids
 
 
-def beadPlot(ids, length=100):
-    # Retrieve ids and relevances
-    relevant_docs = retrieveRelevanceDocuments(ids, length)
+def retrieveRelevanceDocumentsLTR(ids, length=50):
+    # Retrieve relevances.
+    query_relevances_file = csv.reader(open("data/2019qrels-pass.txt"), delimiter=" ")
+    query_relevances = {}
+    for row in query_relevances_file:
+        # Add the query id
+        if row[0] not in query_relevances:
+            query_relevances[row[0]] = {}
 
+        # Add the snippet relevance
+        query_relevances[row[0]][row[2]] = row[3]
+
+    # Get the ranked queries for a given
+    query_rankings_file = csv.reader(open("./myNewRankedLists.txt"), delimiter=" ")
+
+    for row in query_rankings_file:
+        if row[0] in ids and len(ids[row[0]]) <= length:
+            passage_id = row[2].split("=")[1]
+
+            # Create the entry
+            entry = {
+                'passage': row[2].split("=")[1],
+                'rank': row[3],
+                'score': row[4],
+                'relevance': -1
+            }
+
+            # Find the relevance, if it is known.
+            if row[0] in query_relevances and passage_id in query_relevances[row[0]]:
+                entry['relevance'] = int(query_relevances[row[0]][passage_id])
+
+            # Append the entry.
+            ids[row[0]].append(entry)
+    return ids
+
+
+def bead_plot(relevant_docs, title, output_file):
     # Get array list of relevances
     data = []
     y_labels = []
@@ -89,9 +122,8 @@ def beadPlot(ids, length=100):
         data.append(relevance_array)
 
     # Plot the beadplot / heatmap.
-    # a = np.random.random((1, length))
     fig, ax = plt.subplots(figsize=(10, 2))
-    im = ax.imshow(data, aspect=1.4)
+    im = ax.imshow(data, aspect=1.4, vmin=-1, vmax=3, interpolation='none')
 
     plt.yticks([0, 1, 2], y_labels, rotation='0')
     plt.ylabel("Queries")
@@ -100,14 +132,12 @@ def beadPlot(ids, length=100):
     plt.xticks([0, 4, 9, 14, 19, 24, 29, 34, 39, 44, 49], [1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50])
     plt.xlabel("Retrieved rank", loc='center')
 
-    ax.set_title("Beadplot relevance documents for queries")
+    ax.set_title(title)
     fig.tight_layout()
 
     # Show to colormap
     cmap = mpl.cm.viridis
-    # bounds = [-1, 0, 1, 2, 3]
-    # bounds = [-1.5, -0.5, 0.5, 1.5, 2.5, 3.5]
-    bounds = np.linspace(-1, 4, 6)
+    bounds = np.linspace(-1, 4, 5)
     norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
 
     divider = make_axes_locatable(ax)
@@ -121,10 +151,8 @@ def beadPlot(ids, length=100):
     cbar.set_ticks([-0.5, 0.5, 1.5, 2.5, 3.5])
     cbar.ax.set_yticklabels(['?', '0', '1', '2', '3'])
 
-    # , cax=fig.add_axes([0.9, 0.06, 0.02, 0.8]))
-
     plt.show()
-    fig.savefig("beadplot.pdf", bbox_inches='tight')
+    fig.savefig(output_file, bbox_inches='tight')
 
 
 def generateLearningToRankFormat():
@@ -400,7 +428,18 @@ if __name__ == '__main__':
     ndcg_list.sort(key=lambda x: x[3])
     print(ndcg_list)
     draw_ndcg_plot(ndcg_list)
-    # beadPlot({
-    #     '1113437': [],
-    #     '19335': [],
-    #     '183378': []})
+
+    bead_plot(retrieveRelevanceDocuments({
+        '1113437': [],
+        '19335': [],
+        '183378': []}),
+        "Beadplot Baseline Relevance Documents for Queries",
+        "beadplot_baseline.pdf")
+
+    bead_plot(retrieveRelevanceDocumentsLTR({
+        '1113437': [],
+        '19335': [],
+        '183378': []}),
+        "Beadplot Learning to Rank Documents for Queries",
+        "beadplot_ltr.pdf"
+    )
