@@ -164,6 +164,7 @@ def normalize_features_full():
         for row in normalized_data:
             f.write("%s\n" % row)
 
+
 def split_files():
     print("Splitting files into training, test and vallidation")
     file1 = open('features_full_norm.tsv', 'r')
@@ -184,7 +185,49 @@ def split_files():
         for row in validation:
             f.write("%s" % row)
 
+
+def match_relevance_to_file():
+    print("Match the relevance to query and document")
+
+    # Read the normalized and store them for quick access
+    file1 = open('features_full_norm.tsv', 'r')
+    rows = file1.readlines()
+
+    # Retrieve the min and max value of a feature
+    features_data = {}
+    for row in rows:
+        row_split = row.strip().split(" ")
+        doc_id = row_split[0]
+        query_id = row_split[1].split(":")[1]
+
+        # If we do not track it yet, add a new entry
+        if doc_id not in features_data:
+            features_data[doc_id] = {
+                query_id: " ".join(row_split[2:])
+            }
+        else:
+            # We already track it, so expend.
+            features_data[doc_id][query_id] = " ".join(row_split[2:])
+
+    # Retrieve a map of the relevance
+    query_relevance_file = csv.reader(open("data/2019qrels-pass.txt"), delimiter=" ")
+    relevant_matches = []
+    for row in query_relevance_file:
+        query_id = row[0]
+        doc_id = row[2]
+
+        # Check if we have a match
+        if doc_id in features_data and query_id in features_data[doc_id]:
+            relevant_matches.append('%s qid:%s %s' % (row[3], query_id, features_data[doc_id][query_id]))
+
+    # Write the data
+    with open('features_full_norm_relevance.tsv', 'w') as f:
+        for row in relevant_matches:
+            f.write("%s\n" % row)
+
+
 if __name__ == '__main__':
-    generate_collection_features()
-    normalize_features_full()
-    split_files()
+    # generate_collection_features()
+    # normalize_features_full()
+    match_relevance_to_file()
+    # split_files()
