@@ -1,0 +1,2 @@
+java -jar ./RankLib-2.17.jar -train ./features_full_norm_training.tsv -test ./features_full_norm_test.tsv -validate ./features_full_norm_validation.tsv -ranker 6 -metric2t NDCG@10 -metric2T ERR@10 -save models/mymodel.txt -estop 200 -gmax 3
+java -jar ./RankLib-2.17.jar -rank ./features_full_norm_relevance.tsv -load ./models/mymodel.txt -indri models/reranking/myNewRankedLists.txt

@@ -2,6 +2,7 @@ import csv
 import json
 import os
 import random
+import time
 
 collection_dir = "../../Anserini/collections/msmarco-passage/collection_jsonl"
 run_feature_files = [
@@ -227,7 +228,11 @@ def match_relevance_to_file():
 
 
 if __name__ == '__main__':
-    # generate_collection_features()
-    # normalize_features_full()
+    start = time.time()
+    generate_collection_features()
+    normalize_features_full()
     match_relevance_to_file()
     split_files()
+
+    end = time.time()
+    print("Total run time: ", end - start)
