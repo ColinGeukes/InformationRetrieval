@@ -376,7 +376,7 @@ def draw_ndcg_plot(ndcg_list):
 
 
     print(y_labels)
-    fig = plt.figure(figsize=(15,10), dpi=150)
+    fig = plt.figure(figsize=(15,10), dpi=300)
 
     y = range(42)
 
@@ -405,8 +405,8 @@ def draw_ndcg_plot(ndcg_list):
                                markersize=10, label='BM25')
 
     plt.legend(handles=[blue_star, red_square], loc='upper right')
-    plt.xlabel("NDCG@10 scores for both L2R and BM25")
     plt.margins(y = 0.1)
+    plt.xlabel("NDCG@10 score")
     fig.subplots_adjust(left=0.3)
     plt.savefig("ndcg.pdf")
     plt.show()
