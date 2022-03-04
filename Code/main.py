@@ -145,7 +145,7 @@ def retrieveRelevanceDocumentsLTR(ids, length=50):
         query_relevances[row[0]][row[2]] = row[3]
 
     # Get the ranked queries for a given
-    query_rankings_file = csv.reader(open("./myNewRankedLists.txt"), delimiter=" ")
+    query_rankings_file = csv.reader(open("./models/reranking/myNewRankedLists.txt"), delimiter=" ")
 
     for row in query_rankings_file:
         if row[0] in ids and len(ids[row[0]]) <= length:
