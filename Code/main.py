@@ -4,6 +4,7 @@ import math
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.lines as mlines
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 DOCUMENTS_PER_QUERY = 10
@@ -37,65 +38,6 @@ def computeDCG(list, CG):
     return DCG
 
 
-def openFile(docs_per_query=DOCUMENTS_PER_QUERY):
-    tsv_file = open("data/run.marco-test2019-queries.tsv")
-    read_tsv = csv.reader(tsv_file, delimiter="\t")
-    lines = []
-    with open('data/2019qrels-pass.txt') as f:
-        lines = f.readlines()
-    print(lines)
-    list1 = []
-    for line in lines:
-        line = line.split()
-
-        queryId = line[0]
-
-        if queryId not in list1:
-            list1.append(queryId)
-
-    for row in read_tsv:
-        row = row[0].split()
-        queryId = row[0]
-        docId = row[2]
-        if queryId not in dict1 and queryId in list1:
-            dict1[queryId] = []
-        if queryId in list1:
-            dict1[queryId].append(docId)
-
-    for key in dict1:
-        for value in dict1[key][0:docs_per_query]:
-            for line in lines:
-                line = line.split()
-
-                queryId = line[0]
-                docId = line[2]
-                rating = line[3]
-                if queryId not in dict2:
-                    dict2[queryId] = []
-
-                if queryId == key and value == docId:
-                    # print("Key: " + str(key) + " docId:" + str(docId))
-                    dict2[queryId].append(int(rating))
-
-    NDCGList = []
-    for key in dict2:
-        ratingList = dict2[key]
-        I = ratingList.copy()
-        I.sort(reverse=True)
-        DCG = computeDCG(ratingList, computeCG(ratingList))
-        DCGI = computeDCG(I, computeCG(I))
-
-        if DCGI == 0:
-            print("ISZERO")
-        else:
-            NDCG = DCG / DCGI
-            NDCGList.append([key, NDCG])
-            print("Key: " + key + " NDCG: " + str(NDCG))
-            print(ratingList)
-            print(str(I) + "\n")
-    NDCGList.sort(key=lambda x: x[1])
-    print(NDCGList)
-    # return dict2
 
 
 def retrieveRelevanceDocuments(ids, length=50):
@@ -295,11 +237,198 @@ def retrieveFeatureFileFormatBadJson():
         for row in formattedData:
             f.write("%s\n" % row)
 
+def bm25_ndcg(docs_per_query=DOCUMENTS_PER_QUERY):
+    tsv_file = open("data/run.marco-test2019-queries.tsv")
+    read_tsv = csv.reader(tsv_file, delimiter="\t")
+    lines = []
+    with open('data/2019qrels-pass.txt') as f:
+        lines = f.readlines()
+    # print(lines)
+    list1 = []
+    for line in lines:
+        line = line.split()
+
+        queryId = line[0]
+
+        if queryId not in list1:
+            list1.append(queryId)
+
+    for row in read_tsv:
+        row = row[0].split()
+        queryId = row[0]
+        docId = row[2]
+        if queryId not in dict1 and queryId in list1:
+            dict1[queryId] = []
+        if queryId in list1:
+            dict1[queryId].append(docId)
+    # print(dict1)
+    for key in dict1:
+        for value in dict1[key][0:docs_per_query]:
+            for line in lines:
+                line = line.split()
+
+                queryId = line[0]
+                docId = line[2]
+                rating = line[3]
+                if queryId not in dict2:
+                    dict2[queryId] = []
+
+                if queryId == key and value == docId:
+                    # print("Key: " + str(key) + " docId:" + str(docId))
+                    dict2[queryId].append(int(rating))
+
+    NDCGList = []
+    for key in dict2:
+        ratingList = dict2[key]
+        I = ratingList.copy()
+        I.sort(reverse=True)
+        DCG = computeDCG(ratingList, computeCG(ratingList))
+        DCGI = computeDCG(I, computeCG(I))
+
+        if DCGI == 0:
+            print("ISZERO")
+        else:
+            NDCG = DCG / DCGI
+            NDCGList.append([key, NDCG])
+            # print("Key: " + key + " NDCG: " + str(NDCG))
+            # print(ratingList)
+            # print(str(I) + "\n")
+    NDCGList.sort(key=lambda x: x[0])
+    return NDCGList
+    # print(NDCGList)
+    # print(dict2)
+    # return dict2
+
+def l2r_ndcg(docs_per_query=DOCUMENTS_PER_QUERY):
+    tsv_file = open("models/reranking/myNewRankedLists.txt")
+    read_tsv = csv.reader(tsv_file, delimiter="\t")
+    lines = []
+    with open('data/2019qrels-pass.txt') as f:
+        lines = f.readlines()
+    # print(lines)
+    list1 = []
+    for line in lines:
+        line = line.split()
+
+        queryId = line[0]
+        # print(queryId)
+        if queryId not in list1:
+            list1.append(queryId)
+
+    for row in read_tsv:
+        row = row[0].split()
+        queryId = row[0]
+        docId = int(row[2].replace("docid=",""))
+        # print(docId)
+        if queryId not in dict1 and queryId in list1:
+            dict1[queryId] = []
+        if queryId in list1:
+            dict1[queryId].append(docId)
+    # print(dict1)
+    for key in dict1:
+        for value in dict1[key][0:docs_per_query]:
+            for line in lines:
+                line = line.split()
+                # print(line)
+
+                queryId = line[0]
+                docId = line[2]
+                rating = line[3]
+                if queryId not in dict2:
+                    dict2[queryId] = []
+
+                # print(value == docId)
+                # print(rating)
+                if queryId == key and int(value) == int(docId):
+                    # print("Key: " + str(key) + " docId: " + str(docId))
+                    dict2[queryId].append(int(rating))
+    NDCGList = []
+    for key in dict2:
+        ratingList = dict2[key]
+        I = ratingList.copy()
+        I.sort(reverse=True)
+        DCG = computeDCG(ratingList, computeCG(ratingList))
+        DCGI = computeDCG(I, computeCG(I))
+
+        if DCGI == 0:
+            print("ISZERO")
+        else:
+            NDCG = DCG / DCGI
+            NDCGList.append([key, NDCG])
+            # print("Key: " + key + " NDCG: " + str(NDCG))
+            # print(ratingList)
+            # print(str(I) + "\n")
+    NDCGList.sort(key=lambda x: x[0], reverse=True)
+    # print(NDCGList)
+    return NDCGList
+
+def draw_ndcg_plot(ndcg_list):
+    query_dict = {}
+    query_rankings_file = csv.reader(open("../../Anserini/msmarco-test2019-queries.tsv"))
+    for row in query_rankings_file:
+        row = row[0].split("\t")
+        query_dict[row[0]] = row[1]
+
+    print(query_dict)
+    y_labels = []
+    for item in ndcg_list:
+        y_labels.append(query_dict[item[0]])
+
+
+    print(y_labels)
+    fig = plt.figure(figsize=(15,10), dpi=300)
+
+    y = range(42)
+
+    for i in range(1, 43):
+        bm25 = ndcg_list[i - 1][1]
+        l2r = ndcg_list[i - 1][2]
+        if bm25 < l2r:
+            plt.plot([0, bm25], [i - 1, i - 1], color='k')
+            plt.plot([bm25, bm25], [i - 1, i - 1], marker='x', color='r')
+            plt.plot([bm25, l2r], [i - 1, i - 1], linestyle='dashed', color='k')
+            plt.plot([l2r, l2r], [i - 1, i - 1], marker='o', color='b')
+        else:
+            plt.plot([0, l2r], [i - 1, i - 1], color='k')
+            plt.plot([l2r, l2r], [i - 1, i - 1], marker='o', color='b')
+            plt.plot([l2r, bm25], [i - 1, i - 1], linestyle='dashed', color='k')
+            plt.plot([bm25, bm25], [i - 1, i - 1], marker='x', color='r')
+            # plt.plot([bm25, 1], [i - 1, i - 1], marker='x')
+
+
+
+    plt.yticks(y, y_labels, rotation='horizontal')
+
+    blue_star = mlines.Line2D([], [], color='b', marker='o', linestyle='None',
+                              markersize=10, label='L2R')
+    red_square = mlines.Line2D([], [], color='r', marker='x', linestyle='None',
+                               markersize=10, label='BM25')
+
+    plt.legend(handles=[blue_star, red_square], loc='upper right')
+    plt.margins(y = 0.1)
+    plt.xlabel("NDCG@10 score")
+    fig.subplots_adjust(left=0.3)
+    plt.savefig("ndcg.pdf")
+    plt.show()
 
 if __name__ == '__main__':
     # retrieveFeatureFileFormatBadJson()
     # generateLearningToRankFormat()
-    # openFile()
+    bm25_ndcg_list = bm25_ndcg()
+    l2r_ndcg_list = l2r_ndcg()
+    # print(bm25_ndcg_list)
+    # print(len(bm25_ndcg_list))
+    # print(l2r_ndcg_list)
+    # print(len(l2r_ndcg_list))
+
+    ndcg_list = []
+    for i in range(len(bm25_ndcg_list)):
+        difference = bm25_ndcg_list[i][1] - l2r_ndcg_list[i][1]
+        ndcg_list.append([bm25_ndcg_list[i][0], bm25_ndcg_list[i][1], l2r_ndcg_list[i][1], difference])
+    ndcg_list.sort(key=lambda x: x[3])
+    print(ndcg_list)
+    draw_ndcg_plot(ndcg_list)
+
     bead_plot(retrieveRelevanceDocuments({
         '1113437': [],
         '19335': [],
