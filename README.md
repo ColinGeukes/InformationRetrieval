@@ -113,7 +113,7 @@ Run:
 
 
 
-## Word2Vec improvement
+## Word2Query improvement
 Initially we followed the following experiment: https://github.com/castorini/anserini/blob/master/docs/experiments-doc2query.md
 
 These are the predicted queries based on our seq2seq model, based on top k sampling with 10 samples for each document in the corpus.
