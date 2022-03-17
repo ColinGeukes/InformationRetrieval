@@ -4,8 +4,6 @@ from nltk.tokenize import word_tokenize
 import numpy as np
 
 from sklearn.model_selection import train_test_split
-from sklearn.model_selection import cross_val_score
-from sklearn.model_selection import StratifiedKFold
 from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import accuracy_score
@@ -40,12 +38,11 @@ def addStopWordsFraction(df):
 def runModels(X, y):
     X_train, X_validation, Y_train, Y_validation = train_test_split(X, y, test_size=0.33, random_state=1)
 
-    # model = LogisticRegression(solver='liblinear', multi_class='ovr')
+    model = LogisticRegression(solver='liblinear', multi_class='ovr')
     # model = LinearDiscriminantAnalysis()
     # model = KNeighborsClassifier()
-    model = DecisionTreeClassifier()
+    # model = DecisionTreeClassifier()
     # model = GaussianNB()
-    # model = KNeighborsClassifier()
     # model = SVC(gamma='auto')
 
 
