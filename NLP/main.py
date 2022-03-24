@@ -1,6 +1,7 @@
 import pandas
 import nltk
 from nltk.tokenize import word_tokenize
+import re
 import numpy as np
 
 from sklearn.model_selection import train_test_split
@@ -8,6 +9,7 @@ from sklearn.metrics import classification_report
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression
+from sklearn.neural_network import MLPClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
@@ -20,8 +22,8 @@ def addStopWordsFraction(df):
     stopwordsFractionTitle = []
     stopwordsFractionText = []
     for index, row in df.iterrows():
-        tokenizedTitle = word_tokenize(str(row['title']))
-        tokenizedText = word_tokenize(str(row['text']))
+        tokenizedTitle = word_tokenize(re.sub(r'[^\w\s]', '', str(row['title']).lower()))
+        tokenizedText = word_tokenize(re.sub(r'[^\w\s]', '', str(row['text']).lower()))
         if len(tokenizedTitle) != 0:
             stopwordsFractionTitle.append(len(stopwords.intersection(tokenizedTitle)) / len(tokenizedTitle))
         else:
@@ -38,7 +40,8 @@ def addStopWordsFraction(df):
 def runModels(X, y):
     X_train, X_validation, Y_train, Y_validation = train_test_split(X, y, test_size=0.33, random_state=1)
 
-    model = LogisticRegression(solver='liblinear', multi_class='ovr')
+    # model = LogisticRegression(solver='liblinear', multi_class='ovr')
+    model = MLPClassifier()
     # model = LinearDiscriminantAnalysis()
     # model = KNeighborsClassifier()
     # model = DecisionTreeClassifier()
@@ -71,6 +74,7 @@ def run():
     X = df.drop(['label'], axis=1).values
     y = df['label'].values
 
+    print(df)
     print("Running the models...")
     runModels(X, y)
 
