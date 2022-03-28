@@ -1,7 +1,9 @@
-import pandas
+import pandas as pd
 import nltk
 from nltk.tokenize import word_tokenize
 import re
+import numpy as np
+import matplotlib.pyplot as plt
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score
@@ -14,10 +16,12 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.exceptions import ConvergenceWarning
 
 import warnings
+
 stopwords = set()
 # Full list available : https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
 TAG_POS = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'LS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'POS', 'PRP', 'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'SYM', 'TO', 'UH', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'WDT', 'WP', 'WP$', 'WRB']
@@ -66,13 +70,14 @@ def addSemantics(df):
 def runModels(X, y):
     X_train, X_validation, Y_train, Y_validation = train_test_split(X, y, test_size=0.33, random_state=1)
 
-    models = [  ["Logistic regression: ", LogisticRegression(solver='liblinear', multi_class='ovr')],
-                ["MLPClassifier: ", MLPClassifier()],
-                ["Linear Discriminant: ", LinearDiscriminantAnalysis()],
-                ["KNeighbourClassifier: ", KNeighborsClassifier()],
-                ["Decision Tree:", DecisionTreeClassifier()],
-                ["Gaussian: ", GaussianNB()],
-                ["SVC: ", SVC(gamma='auto')]]
+    models = [  ["Logistic regression: ", LogisticRegression(solver='liblinear', multi_class='ovr'), False],
+                ["MLPClassifier: ", MLPClassifier(), False],
+                ["Linear Discriminant: ", LinearDiscriminantAnalysis(), False],
+                ["KNeighbourClassifier: ", KNeighborsClassifier(), False],
+                ["Decision Tree:", DecisionTreeClassifier(), False],
+                ["Gaussian: ", GaussianNB(), False],
+                ["SVC: ", SVC(gamma='auto'), False],
+                ["Random Forest: "  , RandomForestClassifier(random_state=0), True]]
 
     # Just ignore the converge warning when the dataset is to small
     warnings.filterwarnings("ignore", category=ConvergenceWarning)
@@ -85,25 +90,36 @@ def runModels(X, y):
         print('F1 score: ',  f1_score(Y_validation, predictions))
         tn, fp, fn, tp = confusion_matrix(Y_validation, predictions).ravel()
         print("TN:", tn, "FP:", fp, "FN:", fn, "TP:", tp)
+        if model[2]:
+            feature_names = range(X.shape[1])
+            importances = model[1].feature_importances_
+            std = np.std([tree.feature_importances_ for tree in model[1].estimators_], axis=0)
+            forest_importances = pd.Series(importances, index=feature_names)
+
+            fig, ax = plt.subplots()
+            forest_importances.plot.bar(yerr=std, ax=ax)
+            ax.set_title("Feature importances using MDI")
+            ax.set_ylabel("Mean decrease in impurity")
+            fig.tight_layout()
+            plt.show()
         print()
-        # print(classification_report(Y_validation, predictions))
 
 def mergeFiles():
     # 0: reliable (real)
     # 1: unreliable (fake)
 
-    df1 = pandas.read_csv('data/train.csv')
+    df1 = pd.read_csv('data/train.csv')
     df1.drop(["id", "author"], axis=1, inplace=True)
 
-    df2 = pandas.read_csv('data/Fake.csv')
+    df2 = pd.read_csv('data/Fake.csv')
     df2['label'] = 1
     df2.drop(["subject", "date"], axis=1, inplace=True)
 
-    df3 = pandas.read_csv('data/True.csv')
+    df3 = pd.read_csv('data/True.csv')
     df3['label'] = 0
     df3.drop(["subject", "date"], axis=1, inplace=True)
 
-    df4 = pandas.read_csv('data/fake_or_real_news.csv')
+    df4 = pd.read_csv('data/fake_or_real_news.csv')
     df4 = df4.replace('FAKE', 1).replace('REAL', 0)
     df4.drop(["Unnamed: 0"], axis=1, inplace=True)
 
