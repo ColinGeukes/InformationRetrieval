@@ -15,7 +15,9 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.naive_bayes import GaussianNB
 from sklearn.svm import SVC
+from sklearn.exceptions import ConvergenceWarning
 
+import warnings
 stopwords = set()
 # Full list available : https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
 TAG_POS = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'LS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'POS', 'PRP', 'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'SYM', 'TO', 'UH', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'WDT', 'WP', 'WP$', 'WRB']
@@ -72,6 +74,8 @@ def runModels(X, y):
                 ["Gaussian: ", GaussianNB()],
                 ["SVC: ", SVC(gamma='auto')]]
 
+    # Just ignore the converge warning when the dataset is to small
+    warnings.filterwarnings("ignore", category=ConvergenceWarning)
     for model in models:
         model[1].fit(X_train, Y_train)
         predictions = model[1].predict(X_validation)
@@ -79,7 +83,9 @@ def runModels(X, y):
         print('Accuracy: ',  accuracy_score(Y_validation, predictions))
         print('Recall: ',  recall_score(Y_validation, predictions))
         print('F1 score: ',  f1_score(Y_validation, predictions))
-        print(confusion_matrix(Y_validation, predictions))
+        tn, fp, fn, tp = confusion_matrix(Y_validation, predictions).ravel()
+        print("TN:", tn, "FP:", fp, "FN:", fn, "TP:", tp)
+        print()
         # print(classification_report(Y_validation, predictions))
 
 def mergeFiles():

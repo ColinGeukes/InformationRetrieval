@@ -4,3 +4,4 @@ features_full_norm.tsv
 *.tsv
 *.pdf
 *.csv
+*.py___jb_tmp___
