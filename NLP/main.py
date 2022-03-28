@@ -4,7 +4,8 @@ from nltk.tokenize import word_tokenize
 import re
 
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
+from sklearn.metrics import f1_score
+from sklearn.metrics import recall_score
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import accuracy_score
 from sklearn.linear_model import LogisticRegression
@@ -74,7 +75,12 @@ def runModels(X, y):
     for model in models:
         model[1].fit(X_train, Y_train)
         predictions = model[1].predict(X_validation)
-        print(model[0], accuracy_score(Y_validation, predictions))
+        print(model[0])
+        print('Accuracy: ',  accuracy_score(Y_validation, predictions))
+        print('Recall: ',  recall_score(Y_validation, predictions))
+        print('F1 score: ',  f1_score(Y_validation, predictions))
+        print(confusion_matrix(Y_validation, predictions))
+        # print(classification_report(Y_validation, predictions))
 
 def mergeFiles():
     # 0: reliable (real)
@@ -92,8 +98,7 @@ def mergeFiles():
     df3.drop(["subject", "date"], axis=1, inplace=True)
 
     df4 = pandas.read_csv('data/fake_or_real_news.csv')
-    df4 = df4.replace('FAKE', 1)
-    df4 = df4.replace('REAL', 0)
+    df4 = df4.replace('FAKE', 1).replace('REAL', 0)
     df4.drop(["Unnamed: 0"], axis=1, inplace=True)
 
     return df1.append(df2).append(df3).append(df4)
