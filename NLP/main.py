@@ -23,6 +23,10 @@ from sklearn.exceptions import ConvergenceWarning
 import warnings
 
 stopwords = set()
+
+ADD_STOPWORDS = True
+ADD_SEMANTICS = True
+
 # Full list available : https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
 TAG_POS = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'LS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'POS', 'PRP', 'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'SYM', 'TO', 'UH', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'WDT', 'WP', 'WP$', 'WRB']
 # TAG_POS = ['IN', 'NN', 'JJ']
@@ -44,25 +48,31 @@ def taggedWordsFraction(key, semanticsDict, tokenizedText):
 
 def initSemantics():
     semanticsDict = dict()
-    semanticsDict['stopwordsTitle'] = []
-    semanticsDict['stopwordsText'] = []
+    if ADD_STOPWORDS:
+        semanticsDict['stopwordsTitle'] = []
+        semanticsDict['stopwordsText'] = []
 
-    for tag in TAG_POS:
-        semanticsDict['title' + tag] = []
-        semanticsDict['text' + tag] = []
+    if ADD_SEMANTICS:
+        for tag in TAG_POS:
+            semanticsDict['title' + tag] = []
+            semanticsDict['text' + tag] = []
 
     return semanticsDict
 
 def addSemantics(df):
     semanticsDict = initSemantics()
     for index, row in df.iterrows():
+        print(index)
+
         tokenizedTitle = word_tokenize(re.sub(r'[^\w\s]', '', str(row['title']).lower()))
         tokenizedText = word_tokenize(re.sub(r'[^\w\s]', '', str(row['text']).lower()))
-        stopWordsFraction(semanticsDict, 'stopwordsTitle', tokenizedTitle)
-        stopWordsFraction(semanticsDict, 'stopwordsText', tokenizedText)
+        if ADD_STOPWORDS:
+            stopWordsFraction(semanticsDict, 'stopwordsTitle', tokenizedTitle)
+            stopWordsFraction(semanticsDict, 'stopwordsText', tokenizedText)
 
-        taggedWordsFraction('title', semanticsDict, tokenizedTitle)
-        taggedWordsFraction('text', semanticsDict, tokenizedText)
+        if ADD_SEMANTICS:
+            taggedWordsFraction('title', semanticsDict, tokenizedTitle)
+            taggedWordsFraction('text', semanticsDict, tokenizedText)
 
     for key in semanticsDict:
         df[key] = semanticsDict[key]
@@ -77,7 +87,7 @@ def runModels(X, y):
                 ["Decision Tree:", DecisionTreeClassifier(), False],
                 ["Gaussian: ", GaussianNB(), False],
                 ["SVC: ", SVC(gamma='auto'), False],
-                ["Random Forest: "  , RandomForestClassifier(random_state=0), True]]
+                ["Random Forest: ", RandomForestClassifier(random_state=0), True]]
 
     # Just ignore the converge warning when the dataset is to small
     warnings.filterwarnings("ignore", category=ConvergenceWarning)
@@ -128,14 +138,16 @@ def mergeFiles():
 def run():
     print("Reading in datafile...")
     df = mergeFiles()
+    df = df.head(1000)
 
     # Just take a smaller part of the dataset
-    df = df.head(500)
-
     print("Adding semantics to the dataframe...")
     addSemantics(df)
 
+
     df.drop(["title", "text"], axis=1, inplace=True)
+    print(df)
+
     X = df.drop(['label'], axis=1).values
     y = df['label'].values
     print("Running the models...")
