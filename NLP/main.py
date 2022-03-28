@@ -138,7 +138,6 @@ def mergeFiles():
 def run():
     print("Reading in datafile...")
     df = mergeFiles()
-    df = df.head(1000)
 
     # Just take a smaller part of the dataset
     print("Adding semantics to the dataframe...")
