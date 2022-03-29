@@ -26,6 +26,8 @@ stopwords = set()
 
 ADD_STOPWORDS = True
 ADD_SEMANTICS = True
+ADD_DOCUMENT_LENGTH = True
+ADD_CAPITALS = True
 
 # Full list available : https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
 TAG_POS = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'LS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'POS', 'PRP', 'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'SYM', 'TO', 'UH', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'WDT', 'WP', 'WP$', 'WRB']
@@ -46,6 +48,30 @@ def taggedWordsFraction(key, semanticsDict, tokenizedText):
         else:
             semanticsDict[key + tag].append(0)
 
+def documentLength(key, semanticsDict, tokenizedText):
+    # TODO: normalize
+    semanticsDict[key].append(len(tokenizedText))
+
+def wordCapitals(key, semanticsDict, tokenizedText):
+    fullCapitals = 0
+    startCapitals = 0
+    containsCapital = 0
+    noCapitals = 0
+    for token in tokenizedText:
+        if token[0].isupper():
+            startCapitals = startCapitals + 1
+            if token.isupper():
+                fullCapitals = fullCapitals + 1
+        if token.islower():
+            noCapitals = noCapitals + 1
+        else:
+            containsCapital = containsCapital + 1
+    tokenLength = len(tokenizedText)
+    semanticsDict[key + 'FullCapital'].append(fullCapitals / tokenLength if tokenLength != 0 else 0)
+    semanticsDict[key + 'StartCapital'].append(startCapitals / tokenLength if tokenLength != 0 else 0)
+    semanticsDict[key + 'ContainsCapital'].append(containsCapital / tokenLength if tokenLength != 0 else 0)
+    semanticsDict[key + 'NoCapitals'].append(noCapitals / tokenLength if tokenLength != 0 else 0)
+
 def initSemantics():
     semanticsDict = dict()
     if ADD_STOPWORDS:
@@ -56,13 +82,30 @@ def initSemantics():
         for tag in TAG_POS:
             semanticsDict['title' + tag] = []
             semanticsDict['text' + tag] = []
-
+    if ADD_DOCUMENT_LENGTH:
+        semanticsDict['titleLength'] = []
+        semanticsDict['textLength'] = []
+    if ADD_CAPITALS:
+        def initCapitals(key):
+            semanticsDict[key + 'FullCapital'] = []
+            semanticsDict[key + 'StartCapital'] = []
+            semanticsDict[key + 'ContainsCapital'] = []
+            semanticsDict[key + 'NoCapitals'] = []
+        initCapitals('title')
+        initCapitals('text')
     return semanticsDict
 
 def addSemantics(df):
     semanticsDict = initSemantics()
     for index, row in df.iterrows():
         print(index)
+
+        tokenizedTitle = word_tokenize(re.sub(r'[^\w\s]', '', str(row['title'])))
+        tokenizedText = word_tokenize(re.sub(r'[^\w\s]', '', str(row['text'])))
+        if ADD_CAPITALS:
+            wordCapitals('title', semanticsDict, tokenizedTitle)
+            print(semanticsDict)
+            print(tokenizedTitle)
 
         tokenizedTitle = word_tokenize(re.sub(r'[^\w\s]', '', str(row['title']).lower()))
         tokenizedText = word_tokenize(re.sub(r'[^\w\s]', '', str(row['text']).lower()))
@@ -73,6 +116,9 @@ def addSemantics(df):
         if ADD_SEMANTICS:
             taggedWordsFraction('title', semanticsDict, tokenizedTitle)
             taggedWordsFraction('text', semanticsDict, tokenizedText)
+        if ADD_DOCUMENT_LENGTH:
+            documentLength('titleLength', semanticsDict, tokenizedTitle)
+            documentLength('textLength', semanticsDict, tokenizedText)
 
     for key in semanticsDict:
         df[key] = semanticsDict[key]
