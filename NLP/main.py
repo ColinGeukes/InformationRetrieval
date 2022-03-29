@@ -28,16 +28,19 @@ ADD_STOPWORDS = True
 ADD_SEMANTICS = True
 ADD_DOCUMENT_LENGTH = True
 ADD_CAPITALS = True
+ADD_URLS = True
 
 # Full list available : https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
 TAG_POS = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'LS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'POS', 'PRP', 'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'SYM', 'TO', 'UH', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'WDT', 'WP', 'WP$', 'WRB']
 # TAG_POS = ['IN', 'NN', 'JJ']
+
 
 def stopWordsFraction(semanticsDict, key, tokenizedText):
     if len(tokenizedText) != 0:
         semanticsDict[key].append(len(stopwords.intersection(tokenizedText)) / len(tokenizedText))
     else:
         semanticsDict[key].append(0)
+
 
 def taggedWordsFraction(key, semanticsDict, tokenizedText):
     tags = [t[1] for t in nltk.pos_tag(tokenizedText)]
@@ -48,9 +51,11 @@ def taggedWordsFraction(key, semanticsDict, tokenizedText):
         else:
             semanticsDict[key + tag].append(0)
 
+
 def documentLength(key, semanticsDict, tokenizedText):
     # TODO: normalize
     semanticsDict[key].append(len(tokenizedText))
+
 
 def wordCapitals(key, semanticsDict, tokenizedText):
     fullCapitals = 0
@@ -71,6 +76,20 @@ def wordCapitals(key, semanticsDict, tokenizedText):
     semanticsDict[key + 'StartCapital'].append(startCapitals / tokenLength if tokenLength != 0 else 0)
     semanticsDict[key + 'ContainsCapital'].append(containsCapital / tokenLength if tokenLength != 0 else 0)
     semanticsDict[key + 'NoCapitals'].append(noCapitals / tokenLength if tokenLength != 0 else 0)
+
+
+def addUrls(key, semanticsDict, tokenizedText):
+    # TODO: normalize
+    # TODO: I don't think there are any urls in the text hehe
+    # regex taken from: https://www.geeksforgeeks.org/python-check-url-string/
+    urlRegex = r"[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
+    p = re.compile(urlRegex)
+    urls = 0
+    for token in tokenizedText:
+        if p.match(token):
+            urls = urls + 1
+    semanticsDict[key].append(urls)
+
 
 def initSemantics():
     semanticsDict = dict()
@@ -93,12 +112,15 @@ def initSemantics():
             semanticsDict[key + 'NoCapitals'] = []
         initCapitals('title')
         initCapitals('text')
+    if ADD_URLS:
+        semanticsDict['containsUrls'] = []
     return semanticsDict
+
 
 def addSemantics(df):
     semanticsDict = initSemantics()
     for index, row in df.iterrows():
-        print(index)
+        # print(index)
 
         tokenizedTitle = word_tokenize(re.sub(r'[^\w\s]', '', str(row['title'])))
         tokenizedText = word_tokenize(re.sub(r'[^\w\s]', '', str(row['text'])))
@@ -119,9 +141,12 @@ def addSemantics(df):
         if ADD_DOCUMENT_LENGTH:
             documentLength('titleLength', semanticsDict, tokenizedTitle)
             documentLength('textLength', semanticsDict, tokenizedText)
+        if ADD_URLS:
+            addUrls('containsUrls', semanticsDict, tokenizedText)
 
     for key in semanticsDict:
         df[key] = semanticsDict[key]
+
 
 def runModels(X, y):
     X_train, X_validation, Y_train, Y_validation = train_test_split(X, y, test_size=0.33, random_state=1)
@@ -160,6 +185,7 @@ def runModels(X, y):
             plt.show()
         print()
 
+
 def mergeFiles():
     # 0: reliable (real)
     # 1: unreliable (fake)
@@ -181,6 +207,7 @@ def mergeFiles():
 
     return df1.append(df2).append(df3).append(df4)
 
+
 def run():
     print("Reading in datafile...")
     df = mergeFiles()
@@ -197,6 +224,7 @@ def run():
     y = df['label'].values
     print("Running the models...")
     runModels(X, y)
+
 
 if __name__ == '__main__':
     nltk.download('punkt')
