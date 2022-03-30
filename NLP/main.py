@@ -29,6 +29,7 @@ ADD_SEMANTICS = True
 ADD_DOCUMENT_LENGTH = True
 ADD_CAPITALS = True
 ADD_URLS = True
+ADD_SYMBOLS = True
 
 # Full list available : https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
 TAG_POS = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'LS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'POS', 'PRP', 'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'SYM', 'TO', 'UH', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'WDT', 'WP', 'WP$', 'WRB']
@@ -78,17 +79,29 @@ def wordCapitals(key, semanticsDict, tokenizedText):
     semanticsDict[key + 'NoCapitals'].append(noCapitals / tokenLength if tokenLength != 0 else 0)
 
 
-def addUrls(key, semanticsDict, tokenizedText):
+def addUrls(key, semanticsDict, text):
     # TODO: normalize
-    # TODO: I don't think there are any urls in the text hehe
-    # regex taken from: https://www.geeksforgeeks.org/python-check-url-string/
-    urlRegex = r"[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)"
-    p = re.compile(urlRegex)
-    urls = 0
-    for token in tokenizedText:
-        if p.match(token):
-            urls = urls + 1
-    semanticsDict[key].append(urls)
+    # Regex taken from: https://www.geeksforgeeks.org/python-check-url-string/
+    regex = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
+    urls = re.findall(regex, text)
+    semanticsDict[key] = len(urls)
+
+
+def addSymbols(key, semanticsDict, text):
+    # TODO: normalize
+    exclamations = text.count("!")
+    questionmarks = text.count("?")
+    hashtags = text.count("#")
+    singlequotes = text.count("'")
+    doublequotes = text.count('"')
+    asperands = text.count("@")
+
+    semanticsDict[key + 'Exclamations'].append(exclamations)
+    semanticsDict[key + 'Questionmarks'].append(questionmarks)
+    semanticsDict[key + 'Hashtags'].append(hashtags)
+    semanticsDict[key + 'Singlequotes'].append(singlequotes)
+    semanticsDict[key + 'Doublequotes'].append(doublequotes)
+    semanticsDict[key + 'Asperands'].append(asperands)
 
 
 def initSemantics():
@@ -114,23 +127,35 @@ def initSemantics():
         initCapitals('text')
     if ADD_URLS:
         semanticsDict['containsUrls'] = []
+    if ADD_SYMBOLS:
+        def initSymbols(key):
+            semanticsDict[key + 'Exclamations'] = []
+            semanticsDict[key + 'Questionmarks'] = []
+            semanticsDict[key + 'Hashtags'] = []
+            semanticsDict[key + 'Singlequotes'] = []
+            semanticsDict[key + 'Doublequotes'] = []
+            semanticsDict[key + 'Asperands'] = []
+        initSymbols('titleSymbols')
+        initSymbols('textSymbols')
+
     return semanticsDict
 
 
 def addSemantics(df):
     semanticsDict = initSemantics()
     for index, row in df.iterrows():
-        # print(index)
+        title = str(row['title'])
+        text = str(row['text'])
 
-        tokenizedTitle = word_tokenize(re.sub(r'[^\w\s]', '', str(row['title'])))
-        tokenizedText = word_tokenize(re.sub(r'[^\w\s]', '', str(row['text'])))
-        if ADD_CAPITALS:
-            wordCapitals('title', semanticsDict, tokenizedTitle)
-            print(semanticsDict)
-            print(tokenizedTitle)
+        tokenizedTitle = word_tokenize(re.sub(r'[^\w\s]', '', title.lower()))
+        tokenizedText = word_tokenize(re.sub(r'[^\w\s]', '', text.lower()))
 
-        tokenizedTitle = word_tokenize(re.sub(r'[^\w\s]', '', str(row['title']).lower()))
-        tokenizedText = word_tokenize(re.sub(r'[^\w\s]', '', str(row['text']).lower()))
+        tokenizedTitle_keepCapitals = word_tokenize(re.sub(r'[^\w\s]', '', title))
+        tokenizedText_keepCapitals = word_tokenize(re.sub(r'[^\w\s]', '', text))
+
+        tokenizedTitle_keepSymbols = word_tokenize(title)
+        tokenizedTitle_keepSymbols = word_tokenize(text)
+
         if ADD_STOPWORDS:
             stopWordsFraction(semanticsDict, 'stopwordsTitle', tokenizedTitle)
             stopWordsFraction(semanticsDict, 'stopwordsText', tokenizedText)
@@ -138,11 +163,21 @@ def addSemantics(df):
         if ADD_SEMANTICS:
             taggedWordsFraction('title', semanticsDict, tokenizedTitle)
             taggedWordsFraction('text', semanticsDict, tokenizedText)
+
         if ADD_DOCUMENT_LENGTH:
             documentLength('titleLength', semanticsDict, tokenizedTitle)
             documentLength('textLength', semanticsDict, tokenizedText)
+
+        if ADD_CAPITALS:
+            wordCapitals('title', semanticsDict, tokenizedTitle_keepCapitals)
+            wordCapitals('text', semanticsDict, tokenizedText_keepCapitals)
+
         if ADD_URLS:
-            addUrls('containsUrls', semanticsDict, tokenizedText)
+            addUrls('containsUrls', semanticsDict, text)
+
+        if ADD_SYMBOLS:
+            addSymbols('titleSymbols', semanticsDict, title)
+            addSymbols('textSymbols', semanticsDict, text)
 
     for key in semanticsDict:
         df[key] = semanticsDict[key]
@@ -215,7 +250,6 @@ def run():
     # Just take a smaller part of the dataset
     print("Adding semantics to the dataframe...")
     addSemantics(df)
-
 
     df.drop(["title", "text"], axis=1, inplace=True)
     print(df)
