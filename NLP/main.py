@@ -10,6 +10,7 @@ from sklearn.metrics import f1_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import precision_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.neural_network import MLPClassifier
 from sklearn.tree import DecisionTreeClassifier
@@ -19,20 +20,24 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.svm import SVC
 from sklearn.exceptions import ConvergenceWarning
+from sklearn.preprocessing import MinMaxScaler
 
 import warnings
 
 stopwords = set()
 
 ADD_STOPWORDS = True
-ADD_SEMANTICS = True
+ADD_SEMANTICS = False
 ADD_DOCUMENT_LENGTH = True
-ADD_CAPITALS = True
-ADD_URLS = True
-ADD_SYMBOLS = True
+ADD_CAPITALS = False
+ADD_URLS = False
+ADD_SYMBOLS = False
+LOAD_FROM_FILE = False
 
 # Full list available : https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
 TAG_POS = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'LS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'POS', 'PRP', 'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'SYM', 'TO', 'UH', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'WDT', 'WP', 'WP$', 'WRB']
+# TAG_POS = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'PRP', 'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'TO', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'WDT', 'WP', 'WRB']
+
 # TAG_POS = ['IN', 'NN', 'JJ']
 
 
@@ -84,7 +89,7 @@ def addUrls(key, semanticsDict, text):
     # Regex taken from: https://www.geeksforgeeks.org/python-check-url-string/
     regex = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
     urls = re.findall(regex, text)
-    semanticsDict[key] = len(urls)
+    semanticsDict[key].append(len(urls))
 
 
 def addSymbols(key, semanticsDict, text):
@@ -144,6 +149,9 @@ def initSemantics():
 def addSemantics(df):
     semanticsDict = initSemantics()
     for index, row in df.iterrows():
+        if index % 1000 == 0:
+            print(f"{index} / 72033")
+
         title = str(row['title'])
         text = str(row['text'])
 
@@ -165,8 +173,8 @@ def addSemantics(df):
             taggedWordsFraction('text', semanticsDict, tokenizedText)
 
         if ADD_DOCUMENT_LENGTH:
-            documentLength('titleLength', semanticsDict, tokenizedTitle)
-            documentLength('textLength', semanticsDict, tokenizedText)
+            documentLength('titleLength', semanticsDict, title)
+            documentLength('textLength', semanticsDict, text)
 
         if ADD_CAPITALS:
             wordCapitals('title', semanticsDict, tokenizedTitle_keepCapitals)
@@ -193,7 +201,7 @@ def runModels(X, y):
                 ["Decision Tree:", DecisionTreeClassifier(), False],
                 ["Gaussian: ", GaussianNB(), False],
                 ["SVC: ", SVC(gamma='auto'), False],
-                ["Random Forest: ", RandomForestClassifier(random_state=0), True]]
+                ["Random Forest: ", RandomForestClassifier(random_state=0), True] ]
 
     # Just ignore the converge warning when the dataset is to small
     warnings.filterwarnings("ignore", category=ConvergenceWarning)
@@ -203,6 +211,7 @@ def runModels(X, y):
         print(model[0])
         print('Accuracy: ',  accuracy_score(Y_validation, predictions))
         print('Recall: ',  recall_score(Y_validation, predictions))
+        print('Precision: ',  precision_score(Y_validation, predictions))
         print('F1 score: ',  f1_score(Y_validation, predictions))
         tn, fp, fn, tp = confusion_matrix(Y_validation, predictions).ravel()
         print("TN:", tn, "FP:", fp, "FN:", fn, "TP:", tp)
@@ -221,6 +230,9 @@ def runModels(X, y):
         print()
 
 
+def toFile(df1, fileName):
+    df1.to_csv("./data/" + fileName)
+
 def mergeFiles():
     # 0: reliable (real)
     # 1: unreliable (fake)
@@ -228,34 +240,48 @@ def mergeFiles():
     df1 = pd.read_csv('data/train.csv')
     df1.drop(["id", "author"], axis=1, inplace=True)
 
-    df2 = pd.read_csv('data/Fake.csv')
-    df2['label'] = 1
-    df2.drop(["subject", "date"], axis=1, inplace=True)
+    df2_fake = pd.read_csv('data/Fake.csv')
+    df2_fake['label'] = 1
+    df2_fake.drop(["subject", "date"], axis=1, inplace=True)
 
-    df3 = pd.read_csv('data/True.csv')
-    df3['label'] = 0
-    df3.drop(["subject", "date"], axis=1, inplace=True)
+    df2_true = pd.read_csv('data/True.csv')
+    df2_true['label'] = 0
+    df2_true.drop(["subject", "date"], axis=1, inplace=True)
 
-    df4 = pd.read_csv('data/fake_or_real_news.csv')
-    df4 = df4.replace('FAKE', 1).replace('REAL', 0)
-    df4.drop(["Unnamed: 0"], axis=1, inplace=True)
+    df3 = pd.read_csv('data/fake_or_real_news.csv')
+    df3 = df3.replace('FAKE', 1).replace('REAL', 0)
+    df3.drop(["Unnamed: 0"], axis=1, inplace=True)
 
-    return df1.append(df2).append(df3).append(df4)
+    dst = df1.append(df2_fake).append(df2_true).append(df3)
+    return dst
 
 
 def run():
     print("Reading in datafile...")
-    df = mergeFiles()
 
-    # Just take a smaller part of the dataset
-    print("Adding semantics to the dataframe...")
-    addSemantics(df)
+    if LOAD_FROM_FILE:
+        scaled_df = pd.read_csv("./data/baseline-features.csv")
+    else:
+        df = mergeFiles()
+        print(df)
+        # Just take a smaller part of the dataset
+        print("Adding semantics to the dataframe...")
+        addSemantics(df)
 
-    df.drop(["title", "text"], axis=1, inplace=True)
-    print(df)
+        df.drop(["title", "text"], axis=1, inplace=True)
 
-    X = df.drop(['label'], axis=1).values
-    y = df['label'].values
+        # Normalize the matrix
+        scaler = MinMaxScaler()
+        scaler.fit(df)
+        scaled = scaler.fit_transform(df)
+        scaled_df = pd.DataFrame(scaled, columns=df.columns)
+
+        print(scaled_df)
+
+        toFile(scaled_df, "baseline-features.csv")
+
+    X = scaled_df.drop(['label'], axis=1).values
+    y = scaled_df['label'].values
     print("Running the models...")
     runModels(X, y)
 
