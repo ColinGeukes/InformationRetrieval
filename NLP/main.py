@@ -33,6 +33,7 @@ ADD_CAPITALS = False
 ADD_URLS = False
 ADD_SYMBOLS = False
 LOAD_FROM_FILE = False
+CREATE_WORD_PLOT = False
 
 # Full list available : https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
 TAG_POS = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'LS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'POS', 'PRP', 'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'SYM', 'TO', 'UH', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'WDT', 'WP', 'WP$', 'WRB']
@@ -145,8 +146,26 @@ def initSemantics():
 
     return semanticsDict
 
+def wordPlot(wordDict):
+    wordDict = dict(sorted(wordDict.items(), key=lambda item: item[1], reverse=True))
+    items = {k: wordDict[k] for k in list(wordDict)[:10]}
+    plt.ylabel("Occurence")
+    plt.title("Word occurences for the unreliable news articles")
+    plt.bar(range(len(items)), items.values(), align="center")
+    plt.xticks(range(len(items)), list(items.keys()))
+    plt.savefig('unreliable.png')
+    plt.show()
+
+def wordCount(wordDict, text):
+    for word in text:
+        if word not in stopwords:
+            if word in wordDict:
+                wordDict[word] += 1
+            else:
+                wordDict[word] = 1
 
 def addSemantics(df):
+    wordDict = dict()
     semanticsDict = initSemantics()
     for index, row in df.iterrows():
         if index % 1000 == 0:
@@ -154,7 +173,6 @@ def addSemantics(df):
 
         title = str(row['title'])
         text = str(row['text'])
-
         tokenizedTitle = word_tokenize(re.sub(r'[^\w\s]', '', title.lower()))
         tokenizedText = word_tokenize(re.sub(r'[^\w\s]', '', text.lower()))
 
@@ -164,6 +182,9 @@ def addSemantics(df):
         tokenizedTitle_keepSymbols = word_tokenize(title)
         tokenizedTitle_keepSymbols = word_tokenize(text)
 
+        if CREATE_WORD_PLOT:
+            wordCount(wordDict, tokenizedTitle)
+            wordCount(wordDict, tokenizedText)
         if ADD_STOPWORDS:
             stopWordsFraction(semanticsDict, 'stopwordsTitle', tokenizedTitle)
             stopWordsFraction(semanticsDict, 'stopwordsText', tokenizedText)
@@ -187,6 +208,8 @@ def addSemantics(df):
             addSymbols('titleSymbols', semanticsDict, title)
             addSymbols('textSymbols', semanticsDict, text)
 
+    if CREATE_WORD_PLOT:
+        wordPlot(wordDict)
     for key in semanticsDict:
         df[key] = semanticsDict[key]
 
@@ -214,7 +237,7 @@ def runModels(X, y):
         print('Precision: ',  precision_score(Y_validation, predictions))
         print('F1 score: ',  f1_score(Y_validation, predictions))
         tn, fp, fn, tp = confusion_matrix(Y_validation, predictions).ravel()
-        print("TN:", tn, "FP:", fp, "FN:", fn, "TP:", tp)
+        print("TN:", tn, "FP:", fp, "FN:",  fn, "TP:", tp)
         if model[2]:
             feature_names = range(X.shape[1])
             importances = model[1].feature_importances_
@@ -260,7 +283,7 @@ def run():
     print("Reading in datafile...")
 
     if LOAD_FROM_FILE:
-        scaled_df = pd.read_csv("./data/baseline-features.csv")
+        scaled_df = pd.read_csv("./data/d3-baseline-features.csv")
     else:
         df = mergeFiles()
         print(df)
