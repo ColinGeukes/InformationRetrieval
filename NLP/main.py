@@ -34,6 +34,7 @@ ADD_URLS = False
 ADD_SYMBOLS = False
 WORD2VEC = True
 LOAD_FROM_FILE = False
+CREATE_WORD_PLOT = False
 
 # Full list available : https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
 TAG_POS = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'LS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'POS',
@@ -160,8 +161,26 @@ def initSemantics():
 
     return semanticsDict
 
+def wordPlot(wordDict):
+    wordDict = dict(sorted(wordDict.items(), key=lambda item: item[1], reverse=True))
+    items = {k: wordDict[k] for k in list(wordDict)[:10]}
+    plt.ylabel("Occurence")
+    plt.title("Word occurences for the unreliable news articles")
+    plt.bar(range(len(items)), items.values(), align="center")
+    plt.xticks(range(len(items)), list(items.keys()))
+    plt.savefig('unreliable.png')
+    plt.show()
+
+def wordCount(wordDict, text):
+    for word in text:
+        if word not in stopwords:
+            if word in wordDict:
+                wordDict[word] += 1
+            else:
+                wordDict[word] = 1
 
 def addSemantics(df):
+    wordDict = dict()
     semanticsDict = initSemantics()
 
     titleSentences = []
@@ -189,6 +208,9 @@ def addSemantics(df):
         tokenizedTitle_keepSymbols = word_tokenize(title)
         tokenizedTitle_keepSymbols = word_tokenize(text)
 
+        if CREATE_WORD_PLOT:
+            wordCount(wordDict, tokenizedTitle)
+            wordCount(wordDict, tokenizedText)
         if ADD_STOPWORDS:
             stopWordsFraction(semanticsDict, 'stopwordsTitle', tokenizedTitle)
             stopWordsFraction(semanticsDict, 'stopwordsText', tokenizedText)
@@ -235,6 +257,9 @@ def addSemantics(df):
 
             split_sentences(title, titleSentences, title_word_label_prob)
             split_sentences(text, textSentences, text_word_label_prob)
+        if CREATE_WORD_PLOT:
+            wordPlot(wordDict)
+
 
     print(title_word_label_prob)
     print(text_word_label_prob)
@@ -300,13 +325,13 @@ def runModels(X, y):
     X_train, X_validation, Y_train, Y_validation = train_test_split(X, y, test_size=0.33, random_state=1)
 
     models = [["Logistic regression: ", LogisticRegression(solver='liblinear', multi_class='ovr'), False],
-              ["MLPClassifier: ", MLPClassifier(), False],
-              ["Linear Discriminant: ", LinearDiscriminantAnalysis(), False],
-              ["KNeighbourClassifier: ", KNeighborsClassifier(), False],
-              ["Decision Tree:", DecisionTreeClassifier(), False],
-              ["Gaussian: ", GaussianNB(), False],
-              ["SVC: ", SVC(gamma='auto'), False],
-              ["Random Forest: ", RandomForestClassifier(random_state=0), True]]
+                ["MLPClassifier: ", MLPClassifier(), False],
+                ["Linear Discriminant: ", LinearDiscriminantAnalysis(), False],
+                ["KNeighbourClassifier: ", KNeighborsClassifier(), False],
+                ["Decision Tree:", DecisionTreeClassifier(), False],
+                ["Gaussian: ", GaussianNB(), False],
+                ["SVC: ", SVC(max_iter=10000, gamma='auto'), False],
+                ["Random Forest: ", RandomForestClassifier(random_state=0), True] ]
 
     # Just ignore the converge warning when the dataset is to small
     warnings.filterwarnings("ignore", category=ConvergenceWarning)
@@ -319,7 +344,7 @@ def runModels(X, y):
         print('Precision: ', precision_score(Y_validation, predictions))
         print('F1 score: ', f1_score(Y_validation, predictions))
         tn, fp, fn, tp = confusion_matrix(Y_validation, predictions).ravel()
-        print("TN:", tn, "FP:", fp, "FN:", fn, "TP:", tp)
+        print("TN:", tn, "FP:", fp, "FN:",  fn, "TP:", tp)
         if model[2]:
             feature_names = range(X.shape[1])
             importances = model[1].feature_importances_
@@ -367,7 +392,7 @@ def run():
     print("Reading in datafile...")
 
     if LOAD_FROM_FILE:
-        scaled_df = pd.read_csv("./data/baseline-features.csv")
+        scaled_df = pd.read_csv("./data/d3-baseline-features.csv")
     else:
         df = mergeFiles()
         print(df)
