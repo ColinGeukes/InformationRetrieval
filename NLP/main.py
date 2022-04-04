@@ -1,41 +1,46 @@
-import pandas as pd
-import nltk
-from nltk.tokenize import word_tokenize
 import re
-import numpy as np
-import matplotlib.pyplot as plt
-
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score
-from sklearn.metrics import recall_score
-from sklearn.metrics import confusion_matrix
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import precision_score
-from sklearn.linear_model import LogisticRegression
-from sklearn.neural_network import MLPClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
-from sklearn.naive_bayes import GaussianNB
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.svm import SVC
-from sklearn.exceptions import ConvergenceWarning
-from sklearn.preprocessing import MinMaxScaler
-
 import warnings
+
+import matplotlib.pyplot as plt
+import nltk
+import numpy as np
+import pandas as pd
+from gensim.models import Word2Vec
+from nltk.tokenize import word_tokenize
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.exceptions import ConvergenceWarning
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import f1_score
+from sklearn.metrics import precision_score
+from sklearn.metrics import recall_score
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
 
 stopwords = set()
 
-ADD_STOPWORDS = True
+ADD_STOPWORDS = False
 ADD_SEMANTICS = False
-ADD_DOCUMENT_LENGTH = True
+ADD_DOCUMENT_LENGTH = False
 ADD_CAPITALS = False
 ADD_URLS = False
 ADD_SYMBOLS = False
+WORD2VEC = True
 LOAD_FROM_FILE = False
 
 # Full list available : https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
-TAG_POS = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'LS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'POS', 'PRP', 'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'SYM', 'TO', 'UH', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'WDT', 'WP', 'WP$', 'WRB']
+TAG_POS = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'LS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'POS',
+           'PRP', 'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'SYM', 'TO', 'UH', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'WDT',
+           'WP', 'WP$', 'WRB']
+
+
 # TAG_POS = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'PRP', 'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'TO', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'WDT', 'WP', 'WRB']
 
 # TAG_POS = ['IN', 'NN', 'JJ']
@@ -109,6 +114,10 @@ def addSymbols(key, semanticsDict, text):
     semanticsDict[key + 'Asperands'].append(asperands)
 
 
+def addWord2Vec(key, sementicsDict, text):
+    print("TokenText", text)
+
+
 def initSemantics():
     semanticsDict = dict()
     if ADD_STOPWORDS:
@@ -128,6 +137,7 @@ def initSemantics():
             semanticsDict[key + 'StartCapital'] = []
             semanticsDict[key + 'ContainsCapital'] = []
             semanticsDict[key + 'NoCapitals'] = []
+
         initCapitals('title')
         initCapitals('text')
     if ADD_URLS:
@@ -140,20 +150,35 @@ def initSemantics():
             semanticsDict[key + 'Singlequotes'] = []
             semanticsDict[key + 'Doublequotes'] = []
             semanticsDict[key + 'Asperands'] = []
+
         initSymbols('titleSymbols')
         initSymbols('textSymbols')
+
+    if WORD2VEC:
+        semanticsDict['titleWord2Vec'] = []
+        semanticsDict['textWord2Vec'] = []
 
     return semanticsDict
 
 
 def addSemantics(df):
     semanticsDict = initSemantics()
+
+    titleSentences = []
+    textSentences = []
+    title_word_label_prob = {}
+    text_word_label_prob = {}
+
+    def split_into_sentences(body):
+        return [x.split() for x in re.split('[.!?]+ ', body.lower().strip("':;’”,.\"()_"))]
+
     for index, row in df.iterrows():
         if index % 1000 == 0:
-            print(f"{index} / 72033")
+            print(f"{index} / {len(df)}")
 
         title = str(row['title'])
         text = str(row['text'])
+        label = int(row['label'])
 
         tokenizedTitle = word_tokenize(re.sub(r'[^\w\s]', '', title.lower()))
         tokenizedText = word_tokenize(re.sub(r'[^\w\s]', '', text.lower()))
@@ -187,6 +212,86 @@ def addSemantics(df):
             addSymbols('titleSymbols', semanticsDict, title)
             addSymbols('textSymbols', semanticsDict, text)
 
+        if WORD2VEC:
+            def split_sentences(body, sentences, word_label_prob):
+                # TODO Maybe remove punctuations afterwards.
+                # splits = []
+                # sentenceSplits = re.split('(?<=[.!?]) +', body)
+                #
+                # for sentenceSplit in sentenceSplits:
+                #     splits.append(sentenceSplit.split())
+                # result =
+                splits = split_into_sentences(body)
+
+                # Add sentences to list of sentence
+                sentences.extend(splits)
+
+                # Assign label to words
+                for sentence in splits:
+                    for word in sentence:
+                        if word not in word_label_prob:
+                            word_label_prob[word] = [0, 0]
+                        word_label_prob[word][label] += 1
+
+            split_sentences(title, titleSentences, title_word_label_prob)
+            split_sentences(text, textSentences, text_word_label_prob)
+
+    print(title_word_label_prob)
+    print(text_word_label_prob)
+
+    if WORD2VEC:
+        titleWord2Vec = Word2Vec(titleSentences, vector_size=100, window=5, min_count=5, workers=4)
+        textWord2Vec = Word2Vec(textSentences, vector_size=100, window=5, min_count=5, workers=4)
+        titleWord2Vec.wv.save_word2vec_format("word2vec-title.data", binary=False)
+        textWord2Vec.wv.save_word2vec_format("word2vec-text.data", binary=False)
+
+        def get_most_similar_label(body, word2vec, label_prob, topn=20):
+            split = split_into_sentences(body)
+            total_probs = 0
+            words = 0
+
+            for sentence in split:
+                for word in sentence:
+                    try:
+                        similar_words = word2vec.wv.most_similar(positive=word, topn=topn)
+                        total_similarity = sum(n for _, n in similar_words)
+                        word_label_prob = 0
+                        for similar_word in similar_words:
+                            word_label_prob += label_prob[similar_word[0]][1] / \
+                                               (label_prob[similar_word[0]][0] + label_prob[similar_word[0]][1]) * \
+                                               similar_word[1]
+
+                        total_probs += word_label_prob / total_similarity
+                        words += 1
+                    except:
+                        continue
+
+            if words == 0:
+                return 0.5
+            return total_probs / words
+
+        # Loop over the sentences
+        for index, row in df.iterrows():
+            if index % 1000 == 0:
+                print(f"{index} / {len(df)}")
+
+            # split first
+            split_title = get_most_similar_label(row['title'], titleWord2Vec, title_word_label_prob)
+            split_text = get_most_similar_label(row['text'], textWord2Vec, text_word_label_prob)
+
+            print("probs", split_title, split_text)
+
+        # New run on the words.
+        try:
+            print(titleWord2Vec.wv.most_similar(positive='trump', topn=20))
+        except:
+            print("Could not find trump in title")
+
+        try:
+            print(textWord2Vec.wv.most_similar(positive='trump', topn=20))
+        except:
+            print("Could not find trump in text")
+
     for key in semanticsDict:
         df[key] = semanticsDict[key]
 
@@ -194,14 +299,14 @@ def addSemantics(df):
 def runModels(X, y):
     X_train, X_validation, Y_train, Y_validation = train_test_split(X, y, test_size=0.33, random_state=1)
 
-    models = [  ["Logistic regression: ", LogisticRegression(solver='liblinear', multi_class='ovr'), False],
-                ["MLPClassifier: ", MLPClassifier(), False],
-                ["Linear Discriminant: ", LinearDiscriminantAnalysis(), False],
-                ["KNeighbourClassifier: ", KNeighborsClassifier(), False],
-                ["Decision Tree:", DecisionTreeClassifier(), False],
-                ["Gaussian: ", GaussianNB(), False],
-                ["SVC: ", SVC(gamma='auto'), False],
-                ["Random Forest: ", RandomForestClassifier(random_state=0), True] ]
+    models = [["Logistic regression: ", LogisticRegression(solver='liblinear', multi_class='ovr'), False],
+              ["MLPClassifier: ", MLPClassifier(), False],
+              ["Linear Discriminant: ", LinearDiscriminantAnalysis(), False],
+              ["KNeighbourClassifier: ", KNeighborsClassifier(), False],
+              ["Decision Tree:", DecisionTreeClassifier(), False],
+              ["Gaussian: ", GaussianNB(), False],
+              ["SVC: ", SVC(gamma='auto'), False],
+              ["Random Forest: ", RandomForestClassifier(random_state=0), True]]
 
     # Just ignore the converge warning when the dataset is to small
     warnings.filterwarnings("ignore", category=ConvergenceWarning)
@@ -209,10 +314,10 @@ def runModels(X, y):
         model[1].fit(X_train, Y_train)
         predictions = model[1].predict(X_validation)
         print(model[0])
-        print('Accuracy: ',  accuracy_score(Y_validation, predictions))
-        print('Recall: ',  recall_score(Y_validation, predictions))
-        print('Precision: ',  precision_score(Y_validation, predictions))
-        print('F1 score: ',  f1_score(Y_validation, predictions))
+        print('Accuracy: ', accuracy_score(Y_validation, predictions))
+        print('Recall: ', recall_score(Y_validation, predictions))
+        print('Precision: ', precision_score(Y_validation, predictions))
+        print('F1 score: ', f1_score(Y_validation, predictions))
         tn, fp, fn, tp = confusion_matrix(Y_validation, predictions).ravel()
         print("TN:", tn, "FP:", fp, "FN:", fn, "TP:", tp)
         if model[2]:
@@ -232,6 +337,7 @@ def runModels(X, y):
 
 def toFile(df1, fileName):
     df1.to_csv("./data/" + fileName)
+
 
 def mergeFiles():
     # 0: reliable (real)
@@ -253,7 +359,8 @@ def mergeFiles():
     df3.drop(["Unnamed: 0"], axis=1, inplace=True)
 
     dst = df1.append(df2_fake).append(df2_true).append(df3)
-    return dst
+    # return dst
+    return df3[:1500]
 
 
 def run():
