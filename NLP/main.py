@@ -200,7 +200,7 @@ def runModels(X, y):
                 ["KNeighbourClassifier: ", KNeighborsClassifier(), False],
                 ["Decision Tree:", DecisionTreeClassifier(), False],
                 ["Gaussian: ", GaussianNB(), False],
-                ["SVC: ", SVC(gamma='auto'), False],
+                ["SVC: ", SVC(max_iter=10000, gamma='auto'), False],
                 ["Random Forest: ", RandomForestClassifier(random_state=0), True] ]
 
     # Just ignore the converge warning when the dataset is to small
