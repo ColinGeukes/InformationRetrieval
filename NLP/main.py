@@ -26,26 +26,33 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
+import seaborn as svm
 
-stopwords = set()
-
+# Feature extraction settings
 ADD_STOPWORDS = False
 ADD_SEMANTICS = False
 ADD_DOCUMENT_LENGTH = False
 ADD_CAPITALS = False
 ADD_URLS = False
 ADD_SYMBOLS = False
-WORD2VEC = False
+ADD_WORD2VEC = False
+
+# Data analysis settings
 CREATE_WORD2VEC_MODEL = False
-LOAD_FROM_FILE = False
+CREATE_WORD_PLOT = False
+CREATE_HEATMAP = False
+
+# Load data from file
+LOAD_DATA_FROM_FILE = True
 LOAD_WORD_PLOT_FROM_FILE = True
-CREATE_WORD_PLOT = True
+
+# Stopwords placeholder
+stopwords = set()
 
 # Full list available : https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
 TAG_POS = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'LS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'POS',
            'PRP', 'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'SYM', 'TO', 'UH', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'WDT',
            'WP', 'WP$', 'WRB']
-
 
 # TAG_POS = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'PRP', 'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'TO', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'WDT', 'WP', 'WRB']
 
@@ -160,7 +167,7 @@ def initSemantics():
         initSymbols('titleSymbols')
         initSymbols('textSymbols')
 
-    if WORD2VEC:
+    if ADD_WORD2VEC:
         semanticsDict['titleWord2Vec'] = []
         semanticsDict['textWord2Vec'] = []
 
@@ -211,6 +218,21 @@ def print_not_frequent_words(wordDict, title, savefile):
     plt.show()
 
 
+def createHeatmap(df, featureAmount=20, fileName="heatmap.pdf", labelName='label'):
+    all_correlations = df.corr()
+    top_n = all_correlations[labelName].abs().sort_values(ascending=False)
+    top_n_names = top_n[0:featureAmount+1].index.values
+    df_n = df[top_n_names]
+
+    correlations = df_n.corr()
+    top_corr_features = correlations.index
+    plt.figure(figsize=(featureAmount+1, featureAmount+1))
+    # plot heat map
+    g = svm.heatmap(df[top_corr_features].corr(), annot=True, cmap="RdYlGn")
+    fig = g.get_figure()
+    fig.savefig(fileName, dpi=400)
+
+
 def wordCount(wordDict, text):
     for word in text:
         if word not in stopwords:
@@ -234,7 +256,7 @@ def addSemantics(df):
     text_word_labels = None
     title_similar_words = {}
     text_similar_words = {}
-    if WORD2VEC:
+    if ADD_WORD2VEC:
         # title_word2vec_data = open("word2vec-title.data", "r")
         title_word2vec = KeyedVectors.load("word2vec-title.model", mmap='r')
         # text_word2vec_data = open("word2vec-text.data", "r")
@@ -293,7 +315,7 @@ def addSemantics(df):
                 addSymbols('titleSymbols', semanticsDict, title)
                 addSymbols('textSymbols', semanticsDict, text)
 
-            if WORD2VEC:
+            if ADD_WORD2VEC:
                 get_most_similar_label('titleWord2Vec', semanticsDict, title_similar_words, row['title'],
                                        title_word2vec,
                                        title_word_labels, 10)
@@ -405,6 +427,7 @@ def create_word2vec_models(df):
 
 
 def runModels(X, y):
+    X_ids = X.columns.values
     X_train, X_validation, Y_train, Y_validation = train_test_split(X, y, test_size=0.33, random_state=1)
 
     models = [["Logistic regression: ", LogisticRegression(solver='liblinear', multi_class='ovr'), False],
@@ -421,6 +444,13 @@ def runModels(X, y):
     for model in models:
         model[1].fit(X_train, Y_train)
         predictions = model[1].predict(X_validation)
+        predData = np.c_[predictions, X_validation]
+        columnNames = np.insert(X_ids, 0, 'pred-label', axis=0)
+        pdf = pd.DataFrame(predData, columns=columnNames)
+
+        if CREATE_HEATMAP:
+            createHeatmap(pdf, fileName=f"{model[0][:-2].lower().replace(' ', '-')}-heatmap.pdf", labelName='pred-label')
+
         print(model[0])
         print('Accuracy: ', accuracy_score(Y_validation, predictions))
         print('Recall: ', recall_score(Y_validation, predictions))
@@ -474,8 +504,8 @@ def mergeFiles():
 def run():
     print("Reading in datafile...")
 
-    if LOAD_FROM_FILE:
-        scaled_df = pd.read_csv("./data/d3-baseline-features.csv")
+    if LOAD_DATA_FROM_FILE:
+        scaled_df = pd.read_csv("./data/dt-all-features.csv")
     else:
         df = mergeFiles()
         print(df)
@@ -501,9 +531,13 @@ def run():
 
         toFile(scaled_df, "baseline-features.csv")
 
-    X = scaled_df.drop(['label'], axis=1).values
-    y = scaled_df['label'].values
+    scaled_df = scaled_df.drop("Unnamed: 0", axis=1)
+    X = scaled_df.drop(['label'], axis=1)
+    y = scaled_df['label']
     print("Running the models...")
+
+    if CREATE_HEATMAP:
+        createHeatmap(scaled_df, fileName="features-heatmap.pdf")
     runModels(X, y)
 
 
