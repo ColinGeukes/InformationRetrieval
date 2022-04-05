@@ -1,10 +1,13 @@
+import json
 import re
+import time
 import warnings
 
 import matplotlib.pyplot as plt
 import nltk
 import numpy as np
 import pandas as pd
+from gensim.models import KeyedVectors
 from gensim.models import Word2Vec
 from nltk.tokenize import word_tokenize
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
@@ -32,9 +35,11 @@ ADD_DOCUMENT_LENGTH = False
 ADD_CAPITALS = False
 ADD_URLS = False
 ADD_SYMBOLS = False
-WORD2VEC = True
+WORD2VEC = False
+CREATE_WORD2VEC_MODEL = False
 LOAD_FROM_FILE = False
-CREATE_WORD_PLOT = False
+LOAD_WORD_PLOT_FROM_FILE = True
+CREATE_WORD_PLOT = True
 
 # Full list available : https://www.ling.upenn.edu/courses/Fall_2003/ling001/penn_treebank_pos.html
 TAG_POS = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'LS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'POS',
@@ -161,15 +166,18 @@ def initSemantics():
 
     return semanticsDict
 
-def wordPlot(wordDict):
+
+def wordPlot(wordDict, title, savefile):
     wordDict = dict(sorted(wordDict.items(), key=lambda item: item[1], reverse=True))
     items = {k: wordDict[k] for k in list(wordDict)[:10]}
     plt.ylabel("Occurence")
-    plt.title("Word occurences for the unreliable news articles")
+    plt.title(title)
     plt.bar(range(len(items)), items.values(), align="center")
-    plt.xticks(range(len(items)), list(items.keys()))
-    plt.savefig('unreliable.png')
+
+    plt.xticks(range(len(items)), list(items.keys()), rotation=20)
+    plt.savefig(savefile)
     plt.show()
+
 
 def wordCount(wordDict, text):
     for word in text:
@@ -179,159 +187,198 @@ def wordCount(wordDict, text):
             else:
                 wordDict[word] = 1
 
+
+def split_into_sentences(body):
+    return [re.sub('[!@#$:;’”,."()_\'–-…/]', '', x).split() for x in re.split('[.!?]+ ', str(body).lower())]
+
+
 def addSemantics(df):
-    wordDict = dict()
+    wordDict = [dict(), dict()]
     semanticsDict = initSemantics()
 
-    titleSentences = []
-    textSentences = []
-    title_word_label_prob = {}
-    text_word_label_prob = {}
-
-    def split_into_sentences(body):
-        return [x.split() for x in re.split('[.!?]+ ', body.lower().strip("':;’”,.\"()_"))]
-
-    for index, row in df.iterrows():
-        if index % 1000 == 0:
-            print(f"{index} / {len(df)}")
-
-        title = str(row['title'])
-        text = str(row['text'])
-        label = int(row['label'])
-
-        tokenizedTitle = word_tokenize(re.sub(r'[^\w\s]', '', title.lower()))
-        tokenizedText = word_tokenize(re.sub(r'[^\w\s]', '', text.lower()))
-
-        tokenizedTitle_keepCapitals = word_tokenize(re.sub(r'[^\w\s]', '', title))
-        tokenizedText_keepCapitals = word_tokenize(re.sub(r'[^\w\s]', '', text))
-
-        tokenizedTitle_keepSymbols = word_tokenize(title)
-        tokenizedTitle_keepSymbols = word_tokenize(text)
-
-        if CREATE_WORD_PLOT:
-            wordCount(wordDict, tokenizedTitle)
-            wordCount(wordDict, tokenizedText)
-        if ADD_STOPWORDS:
-            stopWordsFraction(semanticsDict, 'stopwordsTitle', tokenizedTitle)
-            stopWordsFraction(semanticsDict, 'stopwordsText', tokenizedText)
-
-        if ADD_SEMANTICS:
-            taggedWordsFraction('title', semanticsDict, tokenizedTitle)
-            taggedWordsFraction('text', semanticsDict, tokenizedText)
-
-        if ADD_DOCUMENT_LENGTH:
-            documentLength('titleLength', semanticsDict, title)
-            documentLength('textLength', semanticsDict, text)
-
-        if ADD_CAPITALS:
-            wordCapitals('title', semanticsDict, tokenizedTitle_keepCapitals)
-            wordCapitals('text', semanticsDict, tokenizedText_keepCapitals)
-
-        if ADD_URLS:
-            addUrls('containsUrls', semanticsDict, text)
-
-        if ADD_SYMBOLS:
-            addSymbols('titleSymbols', semanticsDict, title)
-            addSymbols('textSymbols', semanticsDict, text)
-
-        if WORD2VEC:
-            def split_sentences(body, sentences, word_label_prob):
-                # TODO Maybe remove punctuations afterwards.
-                # splits = []
-                # sentenceSplits = re.split('(?<=[.!?]) +', body)
-                #
-                # for sentenceSplit in sentenceSplits:
-                #     splits.append(sentenceSplit.split())
-                # result =
-                splits = split_into_sentences(body)
-
-                # Add sentences to list of sentence
-                sentences.extend(splits)
-
-                # Assign label to words
-                for sentence in splits:
-                    for word in sentence:
-                        if word not in word_label_prob:
-                            word_label_prob[word] = [0, 0]
-                        word_label_prob[word][label] += 1
-
-            split_sentences(title, titleSentences, title_word_label_prob)
-            split_sentences(text, textSentences, text_word_label_prob)
-        if CREATE_WORD_PLOT:
-            wordPlot(wordDict)
-
-
-    print(title_word_label_prob)
-    print(text_word_label_prob)
-
+    title_word2vec = None
+    text_word2vec = None
+    title_word_labels = None
+    text_word_labels = None
+    title_similar_words = {}
+    text_similar_words = {}
     if WORD2VEC:
-        titleWord2Vec = Word2Vec(titleSentences, vector_size=100, window=5, min_count=5, workers=4)
-        textWord2Vec = Word2Vec(textSentences, vector_size=100, window=5, min_count=5, workers=4)
-        titleWord2Vec.wv.save_word2vec_format("word2vec-title.data", binary=False)
-        textWord2Vec.wv.save_word2vec_format("word2vec-text.data", binary=False)
+        # title_word2vec_data = open("word2vec-title.data", "r")
+        title_word2vec = KeyedVectors.load("word2vec-title.model", mmap='r')
+        # text_word2vec_data = open("word2vec-text.data", "r")
+        text_word2vec = KeyedVectors.load("word2vec-text.model", mmap='r')
 
-        def get_most_similar_label(body, word2vec, label_prob, topn=20):
-            split = split_into_sentences(body)
-            total_probs = 0
-            words = 0
+        with open('title-word-labels.json') as title_json_file:
+            title_word_labels = json.load(title_json_file)
 
-            for sentence in split:
-                for word in sentence:
-                    try:
-                        similar_words = word2vec.wv.most_similar(positive=word, topn=topn)
-                        total_similarity = sum(n for _, n in similar_words)
-                        word_label_prob = 0
-                        for similar_word in similar_words:
-                            word_label_prob += label_prob[similar_word[0]][1] / \
-                                               (label_prob[similar_word[0]][0] + label_prob[similar_word[0]][1]) * \
-                                               similar_word[1]
+        with open('text-word-labels.json') as text_json_file:
+            text_word_labels = json.load(text_json_file)
 
-                        total_probs += word_label_prob / total_similarity
-                        words += 1
-                    except:
-                        continue
+    index2 = 0
+    start = time.time()
 
-            if words == 0:
-                return 0.5
-            return total_probs / words
-
-        # Loop over the sentences
+    if not LOAD_WORD_PLOT_FROM_FILE:
         for index, row in df.iterrows():
-            if index % 1000 == 0:
-                print(f"{index} / {len(df)}")
+            if index2 % 100 == 0:
+                print(f"{index2} / {len(df)}, time elapsed: {time.time() - start}")
 
-            # split first
-            split_title = get_most_similar_label(row['title'], titleWord2Vec, title_word_label_prob)
-            split_text = get_most_similar_label(row['text'], textWord2Vec, text_word_label_prob)
+            title = str(row['title'])
+            text = str(row['text'])
+            label = int(row['label'])
 
-            print("probs", split_title, split_text)
+            tokenizedTitle = word_tokenize(re.sub(r'[^\w\s]', '', title.lower()))
+            tokenizedText = word_tokenize(re.sub(r'[^\w\s]', '', text.lower()))
 
-        # New run on the words.
-        try:
-            print(titleWord2Vec.wv.most_similar(positive='trump', topn=20))
-        except:
-            print("Could not find trump in title")
+            tokenizedTitle_keepCapitals = word_tokenize(re.sub(r'[^\w\s]', '', title))
+            tokenizedText_keepCapitals = word_tokenize(re.sub(r'[^\w\s]', '', text))
 
-        try:
-            print(textWord2Vec.wv.most_similar(positive='trump', topn=20))
-        except:
-            print("Could not find trump in text")
+            tokenizedTitle_keepSymbols = word_tokenize(title)
+            tokenizedTitle_keepSymbols = word_tokenize(text)
+
+            if CREATE_WORD_PLOT:
+                wordCount(wordDict[label], tokenizedTitle)
+                wordCount(wordDict[label], tokenizedText)
+            if ADD_STOPWORDS:
+                stopWordsFraction(semanticsDict, 'stopwordsTitle', tokenizedTitle)
+                stopWordsFraction(semanticsDict, 'stopwordsText', tokenizedText)
+
+            if ADD_SEMANTICS:
+                taggedWordsFraction('title', semanticsDict, tokenizedTitle)
+                taggedWordsFraction('text', semanticsDict, tokenizedText)
+
+            if ADD_DOCUMENT_LENGTH:
+                documentLength('titleLength', semanticsDict, title)
+                documentLength('textLength', semanticsDict, text)
+
+            if ADD_CAPITALS:
+                wordCapitals('title', semanticsDict, tokenizedTitle_keepCapitals)
+                wordCapitals('text', semanticsDict, tokenizedText_keepCapitals)
+
+            if ADD_URLS:
+                addUrls('containsUrls', semanticsDict, text)
+
+            if ADD_SYMBOLS:
+                addSymbols('titleSymbols', semanticsDict, title)
+                addSymbols('textSymbols', semanticsDict, text)
+
+            if WORD2VEC:
+                get_most_similar_label('titleWord2Vec', semanticsDict, title_similar_words, row['title'], title_word2vec,
+                                       title_word_labels, 10)
+                get_most_similar_label('textWord2Vec', semanticsDict, text_similar_words, row['text'], text_word2vec,
+                                       text_word_labels, 10)
+
+            index2 += 1
+
+    if CREATE_WORD_PLOT:
+        # Save the data to file
+        if LOAD_WORD_PLOT_FROM_FILE:
+            with open('word-dict.json', "r") as word_dict_file:
+                wordDict = json.load(word_dict_file)
+        else:
+            with open("word-dict.json", "w") as word_dict_file:
+                word_dict_file.write(json.dumps(wordDict))
+
+        # Create plot for unreliable
+        wordPlot(wordDict[0], 'Word occurrences for reliable news', 'reliable.pdf')
+        wordPlot(wordDict[1], 'Word occurrences for unreliable news', 'unreliable.pdf')
 
     for key in semanticsDict:
         df[key] = semanticsDict[key]
+
+
+def get_most_similar_label(key, semanticDict, similar_words_store, body, word2vec, label_prob, topn=20):
+    split = split_into_sentences(body)
+    total_probs = 0
+    words = 0
+
+    for sentence in split:
+        for word in sentence:
+            try:
+                if word in similar_words_store:
+                    similar_words = similar_words_store[word]
+                else:
+                    similar_words = word2vec.most_similar(positive=word, topn=topn)
+                    similar_words_store[word] = similar_words
+
+                total_similarity_prob = 0
+                word_label_prob = 0
+                for similar_word in similar_words:
+                    similar_word_str = similar_word[0]
+                    similar_word_prob = similar_word[1]
+                    word_label_prob += label_prob[similar_word_str][1] / (
+                            label_prob[similar_word_str][0] + label_prob[similar_word_str][1]) * \
+                                       similar_word_prob
+                    total_similarity_prob += similar_word_prob
+                total_probs += word_label_prob / total_similarity_prob
+                words += 1
+            except:
+                continue
+
+    similar_label = 0.5
+    if words > 0:
+        similar_label = total_probs / words
+
+    semanticDict[key].append(similar_label)
+
+
+def create_word2vec_models(df):
+    title_sentences = []
+    text_sentences = []
+    title_word_label_prob = {}
+    text_word_label_prob = {}
+
+    def split_sentences(body, sentences, word_label_prob, label):
+        splits = split_into_sentences(body)
+
+        # Add sentences to list of sentence
+        sentences.extend(splits)
+
+        # Assign label to words
+        for sentence in splits:
+            for word in sentence:
+                if word not in word_label_prob:
+                    word_label_prob[word] = [0, 0]
+                word_label_prob[word][label] += 1
+
+    index2 = 0
+    for index, row in df.iterrows():
+        if index2 % 1000 == 0:
+            print(f"{index2} / {len(df)}")
+
+        label = int(row['label'])
+        split_sentences(str(row['title']), title_sentences, title_word_label_prob, label)
+        split_sentences(str(row['text']), text_sentences, text_word_label_prob, label)
+        index2 += 1
+
+    # Create the model
+    print("Creating the title word2vec model...")
+    title_word2vec = Word2Vec(title_sentences, vector_size=100, window=5, min_count=5, workers=4)
+    print("Creating the text word2vec model...")
+    text_word2vec = Word2Vec(text_sentences, vector_size=100, window=5, min_count=5, workers=4)
+
+    # Store the model
+    print("Storing the models...")
+    title_word2vec.wv.save("word2vec-title.model")
+    text_word2vec.wv.save("word2vec-text.model")
+
+    print("Storing the word labels...")
+    with open("title-word-labels.json", "w") as outfile:
+        outfile.write(json.dumps(title_word_label_prob))
+    with open("text-word-labels.json", "w") as outfile:
+        outfile.write(json.dumps(text_word_label_prob))
 
 
 def runModels(X, y):
     X_train, X_validation, Y_train, Y_validation = train_test_split(X, y, test_size=0.33, random_state=1)
 
     models = [["Logistic regression: ", LogisticRegression(solver='liblinear', multi_class='ovr'), False],
-                ["MLPClassifier: ", MLPClassifier(), False],
-                ["Linear Discriminant: ", LinearDiscriminantAnalysis(), False],
-                ["KNeighbourClassifier: ", KNeighborsClassifier(), False],
-                ["Decision Tree:", DecisionTreeClassifier(), False],
-                ["Gaussian: ", GaussianNB(), False],
-                ["SVC: ", SVC(max_iter=10000, gamma='auto'), False],
-                ["Random Forest: ", RandomForestClassifier(random_state=0), True] ]
+              ["MLPClassifier: ", MLPClassifier(), False],
+              ["Linear Discriminant: ", LinearDiscriminantAnalysis(), False],
+              ["KNeighbourClassifier: ", KNeighborsClassifier(), False],
+              ["Decision Tree:", DecisionTreeClassifier(), False],
+              ["Gaussian: ", GaussianNB(), False],
+              ["SVC: ", SVC(max_iter=10000, gamma='auto'), False],
+              ["Random Forest: ", RandomForestClassifier(random_state=0), True]]
 
     # Just ignore the converge warning when the dataset is to small
     warnings.filterwarnings("ignore", category=ConvergenceWarning)
@@ -344,7 +391,7 @@ def runModels(X, y):
         print('Precision: ', precision_score(Y_validation, predictions))
         print('F1 score: ', f1_score(Y_validation, predictions))
         tn, fp, fn, tp = confusion_matrix(Y_validation, predictions).ravel()
-        print("TN:", tn, "FP:", fp, "FN:",  fn, "TP:", tp)
+        print("TN:", tn, "FP:", fp, "FN:", fn, "TP:", tp)
         if model[2]:
             feature_names = range(X.shape[1])
             importances = model[1].feature_importances_
@@ -384,8 +431,8 @@ def mergeFiles():
     df3.drop(["Unnamed: 0"], axis=1, inplace=True)
 
     dst = df1.append(df2_fake).append(df2_true).append(df3)
-    # return dst
-    return df3[:1500]
+    return dst
+    # return df3[:1500]
 
 
 def run():
@@ -396,6 +443,12 @@ def run():
     else:
         df = mergeFiles()
         print(df)
+
+        # Create the word 2 vec model
+        if CREATE_WORD2VEC_MODEL:
+            print("Creating word2vec model...")
+            create_word2vec_models(df)
+
         # Just take a smaller part of the dataset
         print("Adding semantics to the dataframe...")
         addSemantics(df)
