@@ -179,6 +179,38 @@ def wordPlot(wordDict, title, savefile):
     plt.show()
 
 
+def print_not_frequent_words(wordDict, title, savefile):
+    wordDict = dict(sorted(wordDict.items(), key=lambda item: item[1], reverse=False))
+    word_occurences = {}
+    for word in wordDict:
+        count = wordDict[word]
+        if count not in word_occurences:
+            word_occurences[count] = 1
+        else:
+            word_occurences[count] += 1
+
+    counts = []
+    entries = []
+
+    total_entries = sum(word_occurences.values())
+    previous_entries_amount = 0
+    for occurence in word_occurences.items():
+        counts.append(occurence[0])
+        next = occurence[1] / total_entries
+        entries.append(previous_entries_amount + next)
+        previous_entries_amount += next
+    plt.plot(counts, entries)
+
+    plt.axvline(x=5, color='r', label='axvline - full height')
+
+    plt.title(title)
+    plt.xlabel('Counts per word')
+    plt.ylabel('Percentage of word inclusion for given count')
+    plt.xscale('log')
+    plt.savefig(savefile)
+    plt.show()
+
+
 def wordCount(wordDict, text):
     for word in text:
         if word not in stopwords:
@@ -262,7 +294,8 @@ def addSemantics(df):
                 addSymbols('textSymbols', semanticsDict, text)
 
             if WORD2VEC:
-                get_most_similar_label('titleWord2Vec', semanticsDict, title_similar_words, row['title'], title_word2vec,
+                get_most_similar_label('titleWord2Vec', semanticsDict, title_similar_words, row['title'],
+                                       title_word2vec,
                                        title_word_labels, 10)
                 get_most_similar_label('textWord2Vec', semanticsDict, text_similar_words, row['text'], text_word2vec,
                                        text_word_labels, 10)
@@ -281,6 +314,9 @@ def addSemantics(df):
         # Create plot for unreliable
         wordPlot(wordDict[0], 'Word occurrences for reliable news', 'reliable.pdf')
         wordPlot(wordDict[1], 'Word occurrences for unreliable news', 'unreliable.pdf')
+
+        print_not_frequent_words(wordDict[0], 'Word count inclusions for reliable news', 'reliable_counts.pdf')
+        print_not_frequent_words(wordDict[1], 'Word count inclusions for unreliable news', 'unreliable_counts.pdf')
 
     for key in semanticsDict:
         df[key] = semanticsDict[key]
