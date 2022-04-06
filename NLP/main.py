@@ -40,11 +40,11 @@ ADD_WORD2VEC = False
 # Data analysis settings
 CREATE_WORD2VEC_MODEL = False
 CREATE_WORD_PLOT = False
-CREATE_HEATMAP = False
+CREATE_HEATMAP = True
 
 # Load data from file
 LOAD_DATA_FROM_FILE = True
-LOAD_WORD_PLOT_FROM_FILE = True
+LOAD_WORD_PLOT_FROM_FILE = False
 
 # Stopwords placeholder
 stopwords = set()
@@ -77,7 +77,6 @@ def taggedWordsFraction(key, semanticsDict, tokenizedText):
 
 
 def documentLength(key, semanticsDict, tokenizedText):
-    # TODO: normalize
     semanticsDict[key].append(len(tokenizedText))
 
 
@@ -103,7 +102,6 @@ def wordCapitals(key, semanticsDict, tokenizedText):
 
 
 def addUrls(key, semanticsDict, text):
-    # TODO: normalize
     # Regex taken from: https://www.geeksforgeeks.org/python-check-url-string/
     regex = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
     urls = re.findall(regex, text)
@@ -111,7 +109,6 @@ def addUrls(key, semanticsDict, text):
 
 
 def addSymbols(key, semanticsDict, text):
-    # TODO: normalize
     exclamations = text.count("!")
     questionmarks = text.count("?")
     hashtags = text.count("#")
@@ -230,7 +227,7 @@ def createHeatmap(df, featureAmount=20, fileName="heatmap.pdf", labelName='label
     # plot heat map
     g = svm.heatmap(df[top_corr_features].corr(), annot=True, cmap="RdYlGn")
     fig = g.get_figure()
-    fig.savefig(fileName, dpi=400)
+    fig.savefig(fileName, dpi=400, bbox_inches='tight')
 
 
 def wordCount(wordDict, text):

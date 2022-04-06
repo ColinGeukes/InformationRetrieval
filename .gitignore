@@ -5,3 +5,4 @@ features_full_norm.tsv
 *.csv
 *.pdf
 *.py___jb_tmp___
+*.zip
