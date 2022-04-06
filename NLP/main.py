@@ -54,8 +54,8 @@ TAG_POS = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'LS', 'MD', '
            'PRP', 'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'SYM', 'TO', 'UH', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'WDT',
            'WP', 'WP$', 'WRB']
 
-# TAG_POS = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'PRP', 'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'TO', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'WDT', 'WP', 'WRB']
 
+# TAG_POS = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'MD', 'NN', 'NNS', 'NNP', 'NNPS', 'PDT', 'PRP', 'PRP$', 'RB', 'RBR', 'RBS', 'RP', 'TO', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'WDT', 'WP', 'WRB']
 # TAG_POS = ['IN', 'NN', 'JJ']
 
 
@@ -296,12 +296,12 @@ def createHeatmap(df, featureAmount=20, fileName="heatmap.pdf", labelName='label
     """
     all_correlations = df.corr()
     top_n = all_correlations[labelName].abs().sort_values(ascending=False)
-    top_n_names = top_n[0:featureAmount+1].index.values
+    top_n_names = top_n[0:featureAmount + 1].index.values
     df_n = df[top_n_names]
 
     correlations = df_n.corr()
     top_corr_features = correlations.index
-    plt.figure(figsize=(featureAmount+1, featureAmount+1))
+    plt.figure(figsize=(featureAmount + 1, featureAmount + 1))
     # plot heat map
     g = svm.heatmap(df[top_corr_features].corr(), annot=True, cmap="RdYlGn")
     fig = g.get_figure()
@@ -407,8 +407,10 @@ def addFeatures(df):
                 addSymbols('textSymbols', semanticsDict, text)
 
             if ADD_WORD2VEC:
-                get_most_similar_label('titleWord2Vec', semanticsDict, title_similar_words, row['title'], title_word2vec, title_word_labels, 10)
-                get_most_similar_label('textWord2Vec', semanticsDict, text_similar_words, row['text'], text_word2vec, text_word_labels, 10)
+                get_most_similar_label('titleWord2Vec', semanticsDict, title_similar_words, row['title'],
+                                       title_word2vec, title_word_labels, 10)
+                get_most_similar_label('textWord2Vec', semanticsDict, text_similar_words, row['text'], text_word2vec,
+                                       text_word_labels, 10)
 
             index2 += 1
 
@@ -560,7 +562,8 @@ def runModels(X, y):
         pdf = pd.DataFrame(predData, columns=columnNames)
 
         if CREATE_HEATMAP:
-            createHeatmap(pdf, fileName=f"{model[0][:-2].lower().replace(' ', '-')}-heatmap.pdf", labelName='pred-label')
+            createHeatmap(pdf, fileName=f"{model[0][:-2].lower().replace(' ', '-')}-heatmap.pdf",
+                          labelName='pred-label')
 
         print(model[0])
         print('Accuracy: ', accuracy_score(Y_validation, predictions))
