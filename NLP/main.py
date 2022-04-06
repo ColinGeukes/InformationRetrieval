@@ -60,6 +60,13 @@ TAG_POS = ['CC', 'CD', 'DT', 'EX', 'FW', 'IN', 'JJ', 'JJR', 'JJS', 'LS', 'MD', '
 
 
 def stopWordsFraction(semanticsDict, key, tokenizedText):
+    """Add stopWordsFraction to features
+
+    Args:
+        semanticsDict: Pandas dataframe
+        key: Name of features
+        tokenizedText: Text to generate features from
+    """
     if len(tokenizedText) != 0:
         semanticsDict[key].append(len(stopwords.intersection(tokenizedText)) / len(tokenizedText))
     else:
@@ -67,6 +74,13 @@ def stopWordsFraction(semanticsDict, key, tokenizedText):
 
 
 def taggedWordsFraction(key, semanticsDict, tokenizedText):
+    """Add taggedWordsFraction to features
+
+    Args:
+        semanticsDict: Pandas dataframe
+        key: Name of features
+        tokenizedText: Text to generate features from
+    """
     tags = [t[1] for t in nltk.pos_tag(tokenizedText)]
 
     for tag in TAG_POS:
@@ -77,10 +91,24 @@ def taggedWordsFraction(key, semanticsDict, tokenizedText):
 
 
 def documentLength(key, semanticsDict, tokenizedText):
+    """Add documentLength to features
+
+    Args:
+        semanticsDict: Pandas dataframe
+        key: Name of features
+        tokenizedText: Text to generate features from
+    """
     semanticsDict[key].append(len(tokenizedText))
 
 
 def wordCapitals(key, semanticsDict, tokenizedText):
+    """Add wordCapitals to features
+
+    Args:
+        semanticsDict: Pandas dataframe
+        key: Name of features
+        tokenizedText: Text to generate features from
+    """
     fullCapitals = 0
     startCapitals = 0
     containsCapital = 0
@@ -102,6 +130,13 @@ def wordCapitals(key, semanticsDict, tokenizedText):
 
 
 def addUrls(key, semanticsDict, text):
+    """Add urls to features
+
+    Args:
+        semanticsDict: Pandas dataframe
+        key: Name of features
+        tokenizedText: Text to generate features from
+    """
     # Regex taken from: https://www.geeksforgeeks.org/python-check-url-string/
     regex = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
     urls = re.findall(regex, text)
@@ -109,6 +144,13 @@ def addUrls(key, semanticsDict, text):
 
 
 def addSymbols(key, semanticsDict, text):
+    """Add Symbols to features
+
+    Args:
+        semanticsDict: Pandas dataframe
+        key: Name of features
+        tokenizedText: Text to generate features from
+    """
     exclamations = text.count("!")
     questionmarks = text.count("?")
     hashtags = text.count("#")
@@ -125,10 +167,24 @@ def addSymbols(key, semanticsDict, text):
 
 
 def addWord2Vec(key, sementicsDict, text):
+    """Add Word2Vec to features
+
+    Args:
+        semanticsDict: Pandas dataframe
+        key: Name of features
+        tokenizedText: Text to generate features from
+    """
     print("TokenText", text)
 
 
 def initSemantics():
+    """Add semantics to features
+
+    Args:
+        semanticsDict: Pandas dataframe
+        key: Name of features
+        tokenizedText: Text to generate features from
+    """
     semanticsDict = dict()
     if ADD_STOPWORDS:
         semanticsDict['stopwordsTitle'] = []
@@ -172,6 +228,13 @@ def initSemantics():
 
 
 def wordPlot(wordDict, title, savefile):
+    """
+    Plot most occuring words to wordDict title and write it to file
+    Args:
+        wordDict: Dictionary with words occuring in text
+        title: title as input
+        savefile: File to save figure to
+    """
     wordDict = dict(sorted(wordDict.items(), key=lambda item: item[1], reverse=True))
     items = {k: wordDict[k] for k in list(wordDict)[:10]}
     plt.ylabel("Occurence")
@@ -184,6 +247,13 @@ def wordPlot(wordDict, title, savefile):
 
 
 def print_not_frequent_words(wordDict, title, savefile):
+    """
+    Generate dictionary of non frequent words, and plot them
+    Args:
+        wordDict: Dictionary with words occuring in text
+        title: title as input
+        savefile: File to save figure to
+    """
     wordDict = dict(sorted(wordDict.items(), key=lambda item: item[1], reverse=False))
     word_occurences = {}
     for word in wordDict:
@@ -216,6 +286,14 @@ def print_not_frequent_words(wordDict, title, savefile):
 
 
 def createHeatmap(df, featureAmount=20, fileName="heatmap.pdf", labelName='label'):
+    """
+    Create a heatmap of the correlation of the features in df
+    Args:
+        df: Panda's dataframe to calculate the correlations
+        featureAmount (int, optional): Top n features with the highest correlation to labelName 'label'. Defaults to 20.
+        fileName (str, optional): Filename to save the heatmap to. Defaults to "heatmap.pdf".
+        labelName (str, optional): Label to select the n highest correlating features from. Defaults to 'label'.
+    """
     all_correlations = df.corr()
     top_n = all_correlations[labelName].abs().sort_values(ascending=False)
     top_n_names = top_n[0:featureAmount+1].index.values
@@ -231,6 +309,12 @@ def createHeatmap(df, featureAmount=20, fileName="heatmap.pdf", labelName='label
 
 
 def wordCount(wordDict, text):
+    """
+    Add the occurences in words in text to wordDict
+    Args:
+        wordDict: Dictionary to add the occurences of text to
+        text: Text to process
+    """
     for word in text:
         if word not in stopwords:
             if word in wordDict:
@@ -240,10 +324,23 @@ def wordCount(wordDict, text):
 
 
 def split_into_sentences(body):
+    """
+    Split the body of text into sentences. This is required for n-gram context processing
+    Args:
+        body (str): Text to split into sentences
+
+    Returns:
+        List[str]: List of sentences found in body
+    """
     return [re.sub('[!@#$:;’”,."()_\'–-…/]', '', x).split() for x in re.split('[.!?]+ ', str(body).lower())]
 
 
-def addSemantics(df):
+def addFeatures(df):
+    """
+    Add all required features to the dataframe
+    Args:
+        df: Panda dataframe to add features to
+    """
     wordDict = [dict(), dict()]
     semanticsDict = initSemantics()
 
@@ -283,9 +380,6 @@ def addSemantics(df):
             tokenizedTitle_keepCapitals = word_tokenize(re.sub(r'[^\w\s]', '', title))
             tokenizedText_keepCapitals = word_tokenize(re.sub(r'[^\w\s]', '', text))
 
-            tokenizedTitle_keepSymbols = word_tokenize(title)
-            tokenizedTitle_keepSymbols = word_tokenize(text)
-
             if CREATE_WORD_PLOT:
                 wordCount(wordDict[label], tokenizedTitle)
                 wordCount(wordDict[label], tokenizedText)
@@ -313,11 +407,8 @@ def addSemantics(df):
                 addSymbols('textSymbols', semanticsDict, text)
 
             if ADD_WORD2VEC:
-                get_most_similar_label('titleWord2Vec', semanticsDict, title_similar_words, row['title'],
-                                       title_word2vec,
-                                       title_word_labels, 10)
-                get_most_similar_label('textWord2Vec', semanticsDict, text_similar_words, row['text'], text_word2vec,
-                                       text_word_labels, 10)
+                get_most_similar_label('titleWord2Vec', semanticsDict, title_similar_words, row['title'], title_word2vec, title_word_labels, 10)
+                get_most_similar_label('textWord2Vec', semanticsDict, text_similar_words, row['text'], text_word2vec, text_word_labels, 10)
 
             index2 += 1
 
@@ -342,6 +433,17 @@ def addSemantics(df):
 
 
 def get_most_similar_label(key, semanticDict, similar_words_store, body, word2vec, label_prob, topn=20):
+    """
+    Get the most similar label of the word2vec for context dependent text processing
+    Args:
+        key: Key to save the label to
+        semanticDict: pandas dataframe to add the features to
+        similar_words_store: Store of similar words
+        body: Body of text to process
+        word2vec: Word2Vec processor 
+        label_prob: Label probability
+        topn (int, optional): top n similar word vectors to process. Defaults to 20.
+    """
     split = split_into_sentences(body)
     total_probs = 0
     words = 0
@@ -361,8 +463,7 @@ def get_most_similar_label(key, semanticDict, similar_words_store, body, word2ve
                     similar_word_str = similar_word[0]
                     similar_word_prob = similar_word[1]
                     word_label_prob += label_prob[similar_word_str][1] / (
-                            label_prob[similar_word_str][0] + label_prob[similar_word_str][1]) * \
-                                       similar_word_prob
+                            label_prob[similar_word_str][0] + label_prob[similar_word_str][1]) * similar_word_prob
                     total_similarity_prob += similar_word_prob
                 total_probs += word_label_prob / total_similarity_prob
                 words += 1
@@ -377,6 +478,11 @@ def get_most_similar_label(key, semanticDict, similar_words_store, body, word2ve
 
 
 def create_word2vec_models(df):
+    """
+    Create word2vec model from dataframe
+    Args:
+        df: Pandas dataframe
+    """
     title_sentences = []
     text_sentences = []
     title_word_label_prob = {}
@@ -424,17 +530,25 @@ def create_word2vec_models(df):
 
 
 def runModels(X, y):
+    """
+    Run all models on dataframe X (features) and labels y
+    Args:
+        X: Dataframe of features
+        y: Dataframe of results
+    """
     X_ids = X.columns.values
     X_train, X_validation, Y_train, Y_validation = train_test_split(X, y, test_size=0.33, random_state=1)
 
-    models = [["Logistic regression: ", LogisticRegression(solver='liblinear', multi_class='ovr'), False],
-              ["MLPClassifier: ", MLPClassifier(), False],
-              ["Linear Discriminant: ", LinearDiscriminantAnalysis(), False],
-              ["KNeighbourClassifier: ", KNeighborsClassifier(), False],
-              ["Decision Tree:", DecisionTreeClassifier(), False],
-              ["Gaussian: ", GaussianNB(), False],
-              ["SVC: ", SVC(max_iter=10000, gamma='auto'), False],
-              ["Random Forest: ", RandomForestClassifier(random_state=0), True]]
+    models = [
+        ["Logistic regression: ", LogisticRegression(solver='liblinear', multi_class='ovr'), False],
+        ["MLPClassifier: ", MLPClassifier(), False],
+        ["Linear Discriminant: ", LinearDiscriminantAnalysis(), False],
+        ["KNeighbourClassifier: ", KNeighborsClassifier(), False],
+        ["Decision Tree:", DecisionTreeClassifier(), False],
+        ["Gaussian: ", GaussianNB(), False],
+        ["SVC: ", SVC(max_iter=10000, gamma='auto'), False],
+        ["Random Forest: ", RandomForestClassifier(random_state=0), True]
+    ]
 
     # Just ignore the converge warning when the dataset is to small
     warnings.filterwarnings("ignore", category=ConvergenceWarning)
@@ -470,11 +584,24 @@ def runModels(X, y):
         print()
 
 
-def toFile(df1, fileName):
-    df1.to_csv("./data/" + fileName)
+def toFile(df, fileName):
+    """
+    Save dataframe df1 to a file called fileName
+    Args:
+        df1: Pandas dataframe
+        fileName: Filename
+    """
+    df.to_csv("./data/" + fileName)
 
 
 def mergeFiles():
+    """
+    Load and merge all datasets used for our application (ds1, ds2, and ds3)
+
+    Returns:
+        _type_: Dataframe containing all data
+    """
+
     # 0: reliable (real)
     # 1: unreliable (fake)
 
@@ -495,10 +622,12 @@ def mergeFiles():
 
     dst = df1.append(df2_fake).append(df2_true).append(df3)
     return dst
-    # return df3[:1500]
 
 
 def run():
+    """
+    Run our application
+    """
     print("Reading in datafile...")
 
     if LOAD_DATA_FROM_FILE:
@@ -514,7 +643,7 @@ def run():
 
         # Just take a smaller part of the dataset
         print("Adding semantics to the dataframe...")
-        addSemantics(df)
+        addFeatures(df)
 
         df.drop(["title", "text"], axis=1, inplace=True)
 
@@ -539,6 +668,10 @@ def run():
 
 
 if __name__ == '__main__':
+    """
+    Main function used for running the application.
+    This function first download the required data for nltk, and then calls the run() function.
+    """
     nltk.download('punkt')
     nltk.download('stopwords')
     nltk.download('averaged_perceptron_tagger')
